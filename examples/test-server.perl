@@ -51,7 +51,7 @@ sub do_sum {
 
 	# Fake an error
 	if ( $sum < 100 ) {
-		$_[KERNEL]->post( 'MySOAP', 'ERROR', $response, 'Add:Error', 'The sum must be above 100' );
+		$_[KERNEL]->post( 'MySOAP', 'FAULT', $response, 'Add:Error', 'The sum must be above 100' );
 	} else {
 		$response->content( $sum );
 		$_[KERNEL]->post( 'MySOAP', 'DONE', $response );

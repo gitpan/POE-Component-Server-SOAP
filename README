@@ -1,4 +1,4 @@
-POE/Component/Server/SOAP version 1.03
+POE/Component/Server/SOAP version 1.04
 ============================================
 
 INSTALLATION
@@ -16,9 +16,7 @@ This module requires these other modules and libraries:
 
 	POE					=>	0.27
 	POE::Component::Server::SimpleHTTP	=>	1.06
-	SOAP::EnvelopeMaker
-	SOAP::Defs
-	SOAP::Parser
+	SOAP::Lite				=>	0.55
 
 COPYRIGHT AND LICENSE
 

@@ -7,9 +7,7 @@ WriteMakefile(
 	'PREREQ_PM'	=> {
 		'POE'					=>	'0.27',
 		'POE::Component::Server::SimpleHTTP'	=>	'1.06',
-		'SOAP::EnvelopeMaker'			=>	0,
-		'SOAP::Defs'				=>	0,
-		'SOAP::Parser'				=>	0,
+		'SOAP::Lite'				=>	'0.55',
 
 	},
 	'ABSTRACT_FROM'	=> 'lib/POE/Component/Server/SOAP.pm', # retrieve abstract from module

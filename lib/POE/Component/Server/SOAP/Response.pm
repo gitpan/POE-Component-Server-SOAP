@@ -6,7 +6,7 @@ use strict qw(subs vars refs);				# Make sure we can't mess up
 use warnings FATAL => 'all';				# Enable warnings to catch errors
 
 # Initialize our version
-our $VERSION = '1.01';
+our $VERSION = '1.02';
 
 # Set our stuff to SimpleHTTP::Response
 use base qw( POE::Component::Server::SimpleHTTP::Response );
@@ -32,13 +32,8 @@ sub soapbody {
 }
 
 # Accessor for SOAP URI
-sub soaptypeuri {
-	return shift->{'SOAPTYPEURI'};
-}
-
-# Accessor for SOAP Type Name
-sub soaptypename {
-	return shift->{'SOAPTYPENAME'};
+sub soapuri {
+	return shift->{'SOAPURI'};
 }
 
 # Accessor for the original HTTP::Request object
@@ -65,6 +60,12 @@ POE::Component::Server::SOAP::Response - Emulates a SimpleHTTP::Response object,
 
 =head1 CHANGES
 
+=head2 1.02
+
+	Renamed the accessor "soaptypeuri" to "soapuri"
+	Removed the unnecessary "soaptypename" accessor
+	Fixed POD wording due to switch between SOAP::Parser and SOAP::Lite
+
 =head2 1.01
 
 	Initial Revision
@@ -78,13 +79,12 @@ POE::Component::Server::SOAP::Response - Emulates a SimpleHTTP::Response object,
 	# Get the response object from SOAP
 	my $response = $_[ARG0];
 
+	$response->soaprequest()	# Returns the original HTTP::Request object from SimpleHTTP
 	$response->soapservice()	# Returns the service that triggered this SOAP instance
 	$response->soapmethod()		# Returns the method that triggered this SOAP instance
-	$response->soapheaders()	# Returns the SOAP Headers parsed via SOAP::Parser
-	$response->soapbody()		# Returns the body parsed via SOAP::Parser
-	$response->soaptypeuri()	# Returns the 'soap_typeuri' key from the body
-	$response->soaptypename()	# Returns the 'soap_typename' key from the body
-	$response->soaprequest()	# Returns the original HTTP::Request object from SimpleHTTP
+	$response->soapuri()		# Returns the original URI of the request without the method
+	$response->soapheaders()	# Returns an arrayref of SOAP::Header objects ( undef if none )
+	$response->soapbody()		# Returns the body as a hashref ( undef if no arguments )
 
 =head2 EXPORT
 
@@ -93,7 +93,7 @@ Nothing.
 =head1 SEE ALSO
 
 	L<POE::Component::Server::SOAP>
-	L<SOAP::Parser>
+	L<SOAP::Lite>
 
 =head1 AUTHOR
 

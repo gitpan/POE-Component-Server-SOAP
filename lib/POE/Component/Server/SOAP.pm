@@ -6,16 +6,14 @@ use strict qw(subs vars refs);				# Make sure we can't mess up
 use warnings FATAL => 'all';				# Enable warnings to catch errors
 use Carp qw(croak);
 
-our $VERSION = '1.03';
+our $VERSION = '1.04';
 
 # Import the proper POE stuff
 use POE;
 use POE::Component::Server::SimpleHTTP;
 
 # We need SOAP stuff
-use SOAP::Defs;
-use SOAP::EnvelopeMaker;
-use SOAP::Parser;
+use SOAP::Lite;
 
 # Our own modules
 use POE::Component::Server::SOAP::Response;
@@ -42,7 +40,7 @@ sub new {
 	my %opt = @_;
 
 	# Our own options
-	my ( $ALIAS, $ADDRESS, $PORT, $HEADERS, $HOSTNAME );
+	my ( $ALIAS, $ADDRESS, $PORT, $HEADERS, $HOSTNAME, $MUSTUNDERSTAND );
 
 	# You could say I should do this: $Stuff = delete $opt{'Stuff'}
 	# But, that kind of behavior is not defined, so I would not trust it...
@@ -138,6 +136,25 @@ sub new {
 		}
 	}
 
+	# Get the MUSTUNDERSTAND
+	if ( exists $opt{'MUSTUNDERSTAND'} and defined $opt{'MUSTUNDERSTAND'} and length( $opt{'MUSTUNDERSTAND'} ) ) {
+		$MUSTUNDERSTAND = $opt{'MUSTUNDERSTAND'};
+		delete $opt{'MUSTUNDERSTAND'};
+	} else {
+		# Debugging info...
+		if ( DEBUG ) {
+			warn 'Using default MUSTUNDERSTAND ( 1 )';
+		}
+
+		# Set the default
+		$MUSTUNDERSTAND = 1;
+
+		# Remove any lingering MUSTUNDERSTAND
+		if ( exists $opt{'MUSTUNDERSTAND'} ) {
+			delete $opt{'MUSTUNDERSTAND'};
+		}
+	}
+
 	# Anything left over is unrecognized
 	if ( keys %opt > 0 ) {
 		if ( DEBUG ) {
@@ -170,12 +187,13 @@ sub new {
 
 		# Our own heap
 		'heap'		=>	{
-			'INTERFACES'	=>	{},
-			'ALIAS'		=>	$ALIAS,
-			'ADDRESS'	=>	$ADDRESS,
-			'PORT'		=>	$PORT,
-			'HEADERS'	=>	$HEADERS,
-			'HOSTNAME'	=>	$HOSTNAME,
+			'INTERFACES'		=>	{},
+			'ALIAS'			=>	$ALIAS,
+			'ADDRESS'		=>	$ADDRESS,
+			'PORT'			=>	$PORT,
+			'HEADERS'		=>	$HEADERS,
+			'HOSTNAME'		=>	$HOSTNAME,
+			'MUSTUNDERSTAND'	=>	$MUSTUNDERSTAND,
 		},
 	) or die 'Unable to create a new session!';
 
@@ -369,9 +387,34 @@ sub TransactionStart {
 		# Create a new error and send it off!
 		$_[KERNEL]->yield( 'FAULT',
 			$response,
-			$soap_fc_client,
+			$SOAP::Constants::FAULT_CLIENT,
 			'Bad Request',
 			'Unable to parse HTTP query',
+		);
+		return;
+	}
+
+	# We only handle text/xml content
+	if ( $request->header('Content-Type') !~ /^text\/xml(;.*)?$/ ) {
+		# Create a new error and send it off!
+		$_[KERNEL]->yield( 'FAULT',
+			$response,
+			$SOAP::Constants::FAULT_CLIENT,
+			'Bad Request',
+			'Content-Type must be text/xml',
+		);
+		return;
+	}
+
+	# We need the method name
+	my $soap_method_name = $request->header('SOAPAction');
+	if ( ! defined $soap_method_name or ! length( $soap_method_name ) ) {
+		# Create a new error and send it off!
+		$_[KERNEL]->yield( 'FAULT',
+			$response,
+			$SOAP::Constants::FAULT_CLIENT,
+			'Bad Request',
+			'SOAPAction is required',
 		);
 		return;
 	}
@@ -382,7 +425,7 @@ sub TransactionStart {
 		# Create a new error and send it off!
 		$_[KERNEL]->yield( 'FAULT',
 			$response,
-			$soap_fc_client,
+			$SOAP::Constants::FAULT_CLIENT,
 			'Bad Request',
 			'Unable to parse the URI for the service',
 		);
@@ -397,34 +440,9 @@ sub TransactionStart {
 		# Create a new error and send it off!
 		$_[KERNEL]->yield( 'FAULT',
 			$response,
-			$soap_fc_client,
+			$SOAP::Constants::FAULT_CLIENT,
 			'Bad Request',
 			"Unknown service: $service",
-		);
-		return;
-	}
-
-	# We only handle text/xml content
-	if ( $request->header('Content-Type') !~ /^text\/xml(;.*)?$/ ) {
-		# Create a new error and send it off!
-		$_[KERNEL]->yield( 'FAULT',
-			$response,
-			$soap_fc_client,
-			'Bad Request',
-			'Content-Type must be text/xml',
-		);
-		return;
-	}
-
-	# We need the method name
-	my $soap_method_name = $request->header('SOAPAction');
-	if ( ! defined $soap_method_name or ! length( $soap_method_name ) ) {
-		# Create a new error and send it off!
-		$_[KERNEL]->yield( 'FAULT',
-			$response,
-			$soap_fc_client,
-			'Bad Request',
-			'SOAPAction is required',
 		);
 		return;
 	}
@@ -434,14 +452,15 @@ sub TransactionStart {
 		# Create a new error and send it off!
 		$_[KERNEL]->yield( 'FAULT',
 			$response,
-			$soap_fc_client,
+			$SOAP::Constants::FAULT_CLIENT,
 			'Bad Request',
 			"Unrecognized SOAPAction header: $soap_method_name",
 		);
 		return;
 	}
 
-	# Get the method
+	# Get the uri + method
+	my $soapuri = $2;
 	my $method = $3;
 
 	# Check to see if this method exists
@@ -449,7 +468,7 @@ sub TransactionStart {
 		# Create a new error and send it off!
 		$_[KERNEL]->yield( 'FAULT',
 			$response,
-			$soap_fc_client,
+			$SOAP::Constants::FAULT_CLIENT,
 			'Bad Request',
 			"Unknown method: $method",
 		);
@@ -457,51 +476,91 @@ sub TransactionStart {
 	}
 
 	# Actually parse the SOAP query!
-	my ( $headers, $body );
-	eval {
-		my $soap_parser = SOAP::Parser->new();
-		$soap_parser->parsestring( $request->content() );
-		$headers = $soap_parser->get_headers();
-		$body = $soap_parser->get_body();
-	};
+	my $som_object;
+	eval { $som_object = SOAP::Deserializer->deserialize( $request->content() ) };
 
 	# Check for errors
 	if ( $@ ) {
-		# Create a new error and send it off!
-		$_[KERNEL]->yield( 'FAULT',
-			$response,
-			$soap_fc_server,
-			'Application Faulted',
-			"Failed while unmarshaling the request: $@",
-		);
+		# Check for special case: VERSION_MISMATCH
+		if ( $@ =~ /^$SOAP::Constants::WRONG_VERSION/ ) {
+			# Create a version mismatch Fault
+			$_[KERNEL]->yield( 'FAULT',
+				$response,
+				$SOAP::Constants::FAULT_VERSION_MISMATCH,
+				$SOAP::Constants::WRONG_VERSION,
+			);
+		} else {
+			# Create a new error and send it off!
+			$_[KERNEL]->yield( 'FAULT',
+				$response,
+				$SOAP::Constants::FAULT_SERVER,
+				'Application Faulted',
+				"Failed while unmarshaling the request: $@",
+			);
+		}
+
+		# All done!
 		return;
+	}
+
+	# Check the headers for the mustUnderstand attribute, and Fault if it is present
+	my $head_count = 1;
+	my @headers = ();
+	while ( 1 ) {
+		# Get the header
+		my $hdr = $som_object->headerof( SOAP::SOM::header . "/[$head_count]" );
+
+		# Check if it is defined
+		if ( ! defined $hdr ) {
+			# We ran out of headers
+			last;
+		}
+
+		# Check if it have mustUnderstand
+		if ( $_[HEAP]->{'MUSTUNDERSTAND'} ) {
+			if ( $hdr->mustUnderstand ) {
+				# Fault!
+				$_[KERNEL]->yield( 'FAULT',
+					$response,
+					$SOAP::Constants::FAULT_MUST_UNDERSTAND,
+					"Unrecognized header '" . $hdr->name . "' has mustUnderstand set to 'true'",
+				);
+
+				# We're done...
+				return;
+			}
+		}
+
+		# Push it into the headers array
+		push( @headers, $hdr );
+
+		# Increment the counter
+		$head_count++;
+	}
+
+	# Extract the body
+	my $body = $som_object->body();
+
+	# Remove the top-level method name in the body
+	$body = $body->{ $method };
+
+	# If it is an empty string, turn it into undef
+	if ( ! ref( $body ) and $body eq '' ) {
+		$body = undef;
 	}
 
 	# Hax0r the Response to include our stuff!
 	$response->{'SOAPMETHOD'} = $method;
 	$response->{'SOAPBODY'} = $body;
-	$response->{'SOAPHEADERS'} = $headers;
 	$response->{'SOAPSERVICE'} = $service;
 	$response->{'SOAPREQUEST'} = $request;
+	$response->{'SOAPURI'} = $soapuri;
 
-	# Do we have a body?
-	if ( defined $body and ref( $body ) and ref( $body ) eq 'HASH' ) {
-		# Move them over to the appropriate places
-		if ( exists $body->{'soap_typeuri'} ) {
-			$response->{'SOAPTYPEURI'} = delete $body->{'soap_typeuri'};
-		} else {
-			$response->{'SOAPTYPEURI'} = undef;
-		}
-
-		if ( exists $body->{'soap_typename'} ) {
-			$response->{'SOAPTYPENAME'} = delete $body->{'soap_typename'};
-		} else {
-			$response->{'SOAPTYPENAME'} = undef;
-		}
+	# Make the headers undef if there is none
+	if ( scalar( @headers ) ) {
+		$response->{'SOAPHEADERS'} = \@headers;
 	} else {
-		# Make sure SOAP::Response won't crash on undefined hash keys
-		$response->{'SOAPTYPEURI'} = undef;
-		$response->{'SOAPTYPENAME'} = undef;
+		$response->{'SOAPHEADERS'} = undef;
 	}
 
 	# ReBless it ;)
@@ -515,7 +574,7 @@ sub TransactionStart {
 
 	# Debugging stuff
 	if ( DEBUG ) {
-		warn "Finished processing Service $service -> Method $method";
+		warn "Sending off to the handler: Service $service -> Method $method for " . $response->connection->remote_ip();
 	}
 
 	# All done!
@@ -544,7 +603,7 @@ sub TransactionFault {
 		}
 
 		# Set the default
-		$fault_code = 'Server';
+		$fault_code = $SOAP::Constants::FAULT_SERVER;
 	}
 
 	# FaultString is a short description of the error
@@ -558,33 +617,20 @@ sub TransactionFault {
 		$fault_string = 'Application Faulted';
 	}
 
-	# Prefabricate the SOAP stuff
-	my $response_content = "<?xml version=\"1.0\"?><s:Envelope xmlns:s='$soap_namespace'><s:Body><s:Fault><faultcode>$fault_code</faultcode><faultstring>$fault_string</faultstring>";
-
-	# Add the detail if applicable
-	if ( defined $fault_detail and length( $fault_detail ) ) {
-		$response_content .= "<detail>$fault_detail</detail>";
-	}
-
-	# Add the actor if applicable
-	if ( defined $fault_actor and length( $fault_actor ) ) {
-		$response_content .= "<faultactor>$fault_actor</faultactor>";
-	}
-
-	# Add the rest...
-	$response_content .= '</s:Fault></s:Body></s:Envelope>';
+	# Serialize the envelope
+	my $content = SOAP::Serializer->envelope( 'fault', $fault_code, $fault_string, $fault_detail, $fault_actor );
 
 	# Setup the response
-	$response->code( 500 );
+	$response->code( $SOAP::Constants::HTTP_ON_FAULT_CODE );
 	$response->header( 'Content-Type', 'text/xml' );
-	$response->content( $response_content );
+	$response->content( $content );
 
 	# Send it off to the backend!
 	$_[KERNEL]->post( $_[HEAP]->{'ALIAS'} . '-BACKEND', 'DONE', $response );
 
 	# Debugging stuff
 	if ( DEBUG ) {
-		warn 'Finished processing FAULT response';
+		warn 'Finished processing FAULT for ' . $response->connection->remote_ip() ;
 	}
 
 	# All done!
@@ -596,20 +642,16 @@ sub TransactionDone {
 	# ARG0 = SOAP::Response object
 	my $response = $_[ARG0];
 
-	# Create the content
-	my $content = '';
-	my $em = SOAP::EnvelopeMaker->new( sub { $content .= shift } );
-
-	# Setup the EnvelopeMaker
-	$em->set_body(
-		$response->soaptypeuri(),
-		$response->soapmethod() . 'Response',
-		0,
-		{ return => $response->content() },
+	# Make the envelope!
+	# The prefix is to change the darned "c-gensym3" to "s-gensym3" -> means it was server-generated ( whatever SOAP::Lite says... )
+	my $content = SOAP::Serializer->prefix( 's' )->envelope(
+		'response',
+		SOAP::Data->name( $response->soapmethod() . 'Response' )->uri( $response->soapuri() ),
+		$response->content(),
 	);
 
 	# Set up the response!
-	$response->code( 200 );
+	$response->code( $SOAP::Constants::HTTP_ON_SUCCESS_CODE );
 	$response->header( 'Content-Type', 'text/xml' );
 	$response->content( $content );
 
@@ -618,7 +660,7 @@ sub TransactionDone {
 
 	# Debug stuff
 	if ( DEBUG ) {
-		warn "Finished processing Method " . $response->soapmethod();
+		warn 'Finished processing Service ' . $response->soapservice . ' -> Method ' . $response->soapmethod . ' for ' . $response->connection->remote_ip();
 	}
 
 	# All done!
@@ -635,7 +677,7 @@ sub TransactionClose {
 
 	# Debug stuff
 	if ( DEBUG ) {
-		warn "Closing the socket of this Method " . $response->soapmethod();
+		warn 'Closing the socket of this Service ' . $response->soapmethod . ' -> Method ' . $response->soapmethod() . ' for ' . $response->connection->remote_ip();
 	}
 
 	# All done!
@@ -703,6 +745,16 @@ POE::Component::Server::SOAP - publish POE event handlers via SOAP over HTTP
 
 =head1 CHANGES
 
+=head2 1.04
+
+	Big change! The deserializer is now hooked into SOAP::Lite for full SOAP/1.1 interop :)
+	Big change! The output envelope is now hooked into SOAP::Lite instead of SOAP::EnvelopeMaker :)
+	Made debugging more productive by adding service/method/IP to output
+	Got rid of the CHANGES file, it is redundant ;)
+	The headers is now an arrayref of SOAP::Header objects ( if any )
+	Got rid of SOAP::Defs, replaced them with SOAP::Constants ( from SOAP::Lite )
+	Added the MUSTUNDERSTAND parameter to new()
+
 =head2 1.03
 
 	I realized that I didn't like having the SOAP Fault event called "ERROR" and changed it to "FAULT" :)
@@ -763,7 +815,7 @@ To start Server::SOAP, just call it's new method:
 
 This method will die on error or return success.
 
-This constructor accepts only 5 options.
+This constructor accepts only 6 options.
 
 =over 4
 
@@ -794,6 +846,11 @@ The default header is:
 	Server => 'POE::Component::Server::SOAP/' . $VERSION
 
 For more information, consult the L<HTTP::Headers> module.
+
+=item C<MUSTUNDERSTAND>
+
+This is a boolean value, controlling whether Server::SOAP will check for this value in the Headers and Fault if it is present.
+This will default to true.
 
 =back
 
@@ -885,9 +942,9 @@ It also would help to read some stuff at http://www.soapware.org/ -> They have s
 Now, once you have set up the services/methods, what do you expect from Server::SOAP?
 Every request is pretty straightforward, you just get a Server::SOAP::Response object in ARG0.
 
-	The SOAP::Response object contains a wealth of information about the specified request:
+	The Server::SOAP::Response object contains a wealth of information about the specified request:
 		- There is the SimpleHTTP::Connection object, which gives you connection information
-		- There is the various SOAP accessors provided via SOAP::Response
+		- There is the various SOAP accessors provided via Server::SOAP::Response
 		- There is the HTTP::Request object
 
 	Example information you can get:
@@ -897,22 +954,28 @@ Every request is pretty straightforward, you just get a Server::SOAP::Response o
 		$response->soapbody()			# The arguments to the method
 
 Probably the most important part of SOAP::Response is the body of the message, which contains the arguments to the method call.
-The data in the body is a hash, for more information look at SOAP::Parser.
+The data in the body is a hash, for more information look at SOAP::Lite -> SOAP::Deserializer.
 
-I cannot guarantee what will be in the body, it is all up to the SOAP serializer/deserializer. Server::SOAP will do one thing, that is
-to remove the 'soap_typeuri' and 'soap_typename' if the body is a hash and those keys exist. ( They will still be accessible via the
-methods in the Server::SOAP::Response object ) I can provide some examples:
+I cannot guarantee what will be in the body, it is all up to the SOAP serializer/deserializer. I can provide some examples:
 
 	NOTE: It is much easier to play around with parameters if they are properly encoded.
 	If you are using SOAP::Lite, make extensive use of SOAP::Data->name() to create parameters :)
 
-	NOTE: It is a known problem that passing arrays will make SOAP::Parser choke, I'm working on a new implementation.
-
-	Calling a SOAP method with an array:
+	Calling a SOAP method with no arguments:
 		print SOAP::Lite
 			-> uri('http://localhost:32080/')
 			-> proxy('http://localhost:32080/?session=MyServer')
-			-> Sum_Things(8,6,7,5,3,0,9,183)
+			-> Sum_Things()
+			-> result
+
+	The body will look like this:
+		$VAR1 = undef;
+
+	Calling a SOAP method with multiple arguments:
+		print SOAP::Lite
+			-> uri('http://localhost:32080/')
+			-> proxy('http://localhost:32080/?session=MyServer')
+			-> Sum_Things( 8, 6, 7, 5, 3, 0, 9, 183 )
 			-> result
 
 	The body will look like this:
@@ -929,6 +992,29 @@ methods in the Server::SOAP::Response object ) I can provide some examples:
 
 		NOTE: The original array ordering can be received by sorting on the keys.
 
+	Calling a SOAP method with an arrayref
+		print SOAP::Lite
+			-> uri('http://localhost:32080/')
+			-> proxy('http://localhost:32080/?session=MyServer')
+			-> Sum_Things(
+				[ 8, 6, 7, 5, 3, 0, 9, 183 ]
+				)
+			-> result
+
+	The body will look like this:
+		$VAR1 = {
+			'Array' => [
+				'8',
+				'6',
+				'7',
+				'5',
+				'3',
+				'0',
+				'9',
+				'183'
+			]
+		};
+
 	Calling a SOAP method with a hash:
 		print SOAP::Lite
 			-> uri('http://localhost:32080/')
@@ -944,8 +1030,6 @@ methods in the Server::SOAP::Response object ) I can provide some examples:
 			'c-gensym21' => {
 				'Hello' => 'World!',
 				'FOO' => 'bax',
-				'soap_typename' => 'SOAPStruct',
-				'soap_typeuri' => 'http://xml.apache.org/xml-soap'
 			}
 		};
 
