@@ -1,4 +1,4 @@
-# $Id: SOAP.pm,v 1.3 2002/09/07 06:18:26 rcaputo Exp $
+# $Id: SOAP.pm,v 1.4 2002/09/09 03:44:40 rcaputo Exp $
 # License and documentation are after __END__.
 
 package POE::Component::Server::SOAP;
@@ -8,7 +8,7 @@ use strict;
 use Carp qw(croak);
 
 use vars qw($VERSION);
-$VERSION = '0.02';
+$VERSION = '0.03';
 
 use POE;
 use POE::Component::Server::HTTP;
@@ -239,3 +239,125 @@ sub return {
 }
 
 1;
+
+__END__
+
+=head1 NAME
+
+POE::Component::Server::SOAP - publish POE event handlers via SOAP over HTTP
+
+=head1 SYNOPSIS
+
+  use POE;
+  use POE::Component::Server::SOAP;
+
+  POE::Component::Server::SOAP->new( alias => "soapy", port  => 32080 );
+
+  POE::Session->create
+    ( inline_states =>
+      { _start => \&setup_service,
+        _stop  => \&shutdown_service,
+        sum_things => \&do_sum,
+      }
+    );
+
+  $poe_kernel->run;
+  exit 0;
+
+  sub setup_service {
+    my $kernel = $_[KERNEL];
+    $kernel->alias_set("service");
+    $kernel->post( soapy => publish => service => "sum_things" );
+  }
+
+  sub shutdown_service {
+    $_[KERNEL]->post( soapy => rescind => service => "sum_things" );
+  }
+
+  sub do_sum {
+    my $soap_transaction = $_[ARG0];
+    my $params = $soap_transaction->params();
+    my $sum = 0;
+    while (my ($field, $value) = each(%$params)) {
+      $sum += $value;
+    }
+    $soap_transaction->return("Thanks.  Sum is: $sum");
+  }
+
+=head1 DESCRIPTION
+
+POE::Component::Server::SOAP is a bolt-on component that can publish a
+event handlers via SOAP over HTTP.
+
+There are four steps to enabling your programs to support SOAP
+requests.  First you must load the component.  Then you must
+instantiate it.  Each POE::Component::Server::SOAP instance requires
+an alias to accept messages with and a port to bind itself to.
+Finally, your program should posts a "publish" events to the server
+for each event handler it wishes to expose.
+
+  use POE::Component::Server::SOAP;
+  POE::Component::Server::SOAP->new( alias => "soapy", port  => 32080 );
+  $kernel->post( soapy => publish => session_alias => "event_name" );
+
+Later you can make events private again.
+
+  $kernel->post( soapy => rescind => session_alias => "event_name" );
+
+Finally you must write the SOAP request handler.  SOAP handlers
+receive a single parameter, ARG0, which contains a SOAP transaction
+object.  The object has two methods: params(), which returns a
+reference to a hash of SOAP parameters; and return(), which returns
+its parameters to the client as a SOAP response.
+
+  sum_things => sub {
+    my $soap_transaction = $_[ARG0];
+    my $params = $soap_transaction->params();
+    my $sum = 0;
+    while (my ($field, $value) = each(%$params)) {
+      $sum += $value;
+    }
+    $soap_transaction->return("Thanks.  Sum is: $sum");
+  }
+
+And here is a sample SOAP::Lite client.  It should work with the
+server in the SYNOPSIS.
+
+  #!/usr/bin/perl
+
+  use warnings;
+  use strict;
+
+  use SOAP::Lite;
+
+  print SOAP::Lite
+    -> uri('http://poe_dynodns.net:32080/')
+    -> proxy('http://poe.dynodns.net:32080/?session=sum_server')
+    -> sum_things(8,6,7,5,3,0,9)
+    -> result
+    ;
+  print "\n";
+
+=head1 BUGS
+
+This project was created over the course of two days, which attests to
+the ease of writing new POE components.  However, I did not learn SOAP
+in depth, so I am probably not doing things the best they could.
+Please pass bug reports and suggestions along to troc+soap@pobox.com.
+
+=head1 SEE ALSO
+
+The examples directory that came with this component.
+
+SOAP::Line
+POE::Component::Server::HTTP
+POE
+
+=head1 AUTHOR & COPYRIGHTS
+
+POE::Component::Server::SOAP is Copyright 2002 by Rocco Caputo.  All
+rights are reserved.  POE::Component::Server::SOAP is free software;
+you may redistribute it and/or modify it under the same terms as Perl
+itself.
+
+=cut
