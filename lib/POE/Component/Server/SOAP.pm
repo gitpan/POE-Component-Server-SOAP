@@ -6,7 +6,7 @@ use strict qw(subs vars refs);				# Make sure we can't mess up
 use warnings FATAL => 'all';				# Enable warnings to catch errors
 use Carp qw(croak);
 
-our $VERSION = '1.07';
+our $VERSION = '1.08';
 
 # Import the proper POE stuff
 use POE;
@@ -189,7 +189,9 @@ sub new {
 			# Transaction handlers
 			'Got_Request'	=>	\&TransactionStart,
 			'FAULT'		=>	\&TransactionFault,
+			'RAWFAULT'	=>	\&TransactionFault,
 			'DONE'		=>	\&TransactionDone,
+			'RAWDONE'	=>	\&TransactionDone,
 			'CLOSE'		=>	\&TransactionClose,
 		},
 
@@ -601,7 +603,7 @@ sub TransactionStart {
 	$body = $body->{ $method };
 
 	# If it is an empty string, turn it into undef
-	if ( ! ref( $body ) and $body eq '' ) {
+	if ( defined $body and ! ref( $body ) and $body eq '' ) {
 		$body = undef;
 	}
 
@@ -633,6 +635,10 @@ sub TransactionStart {
 		warn "Sending off to the handler: Service $service -> Method $method for " . $response->connection->remote_ip();
 	}
 
+	if ( DEBUG == 2 ) {
+		print STDERR $request->content(), "\n\n";
+	}
+
 	# All done!
 	return 1;
 }
@@ -651,30 +657,37 @@ sub TransactionFault {
 		return undef;
 	}
 
-	# Fault Code must be defined
-	if ( ! defined $fault_code or ! length( $fault_code ) ) {
-		# Debug stuff
-		if ( DEBUG ) {
-			warn 'Setting default Fault Code';
+	# Is this a RAWFAULT event?
+	my $content = undef;
+	if ( $_[STATE] eq 'RAWFAULT' ) {
+		# Tell SOAP::Serializer to not serialize it
+		$content = SOAP::Serializer->envelope( 'freeform', SOAP::Data->type( 'xml', $response->content() ) );
+	} else {
+		# Fault Code must be defined
+		if ( ! defined $fault_code or ! length( $fault_code ) ) {
+			# Debug stuff
+			if ( DEBUG ) {
+				warn 'Setting default Fault Code';
+			}
+
+			# Set the default
+			$fault_code = $SOAP::Constants::FAULT_SERVER;
 		}
 
-		# Set the default
-		$fault_code = $SOAP::Constants::FAULT_SERVER;
-	}
+		# FaultString is a short description of the error
+		if ( ! defined $fault_string or ! length( $fault_string ) ) {
+			# Debug stuff
+			if ( DEBUG ) {
+				warn 'Setting default Fault String';
+			}
 
-	# FaultString is a short description of the error
-	if ( ! defined $fault_string or ! length( $fault_string ) ) {
-		# Debug stuff
-		if ( DEBUG ) {
-			warn 'Setting default Fault String';
+			# Set the default
+			$fault_string = 'Application Faulted';
 		}
 
-		# Set the default
-		$fault_string = 'Application Faulted';
+		# Serialize the envelope
+		$content = SOAP::Serializer->envelope( 'fault', $fault_code, $fault_string, $fault_detail, $fault_actor );
 	}
-
-	# Serialize the envelope
-	my $content = SOAP::Serializer->envelope( 'fault', $fault_code, $fault_string, $fault_detail, $fault_actor );
 
 	# Setup the response
 	$response->code( $SOAP::Constants::HTTP_ON_FAULT_CODE );
@@ -686,7 +699,11 @@ sub TransactionFault {
 
 	# Debugging stuff
 	if ( DEBUG ) {
-		warn 'Finished processing FAULT for ' . $response->connection->remote_ip() ;
+		warn 'Finished processing ' . $_[STATE] . ' for ' . $response->connection->remote_ip();
+	}
+
+	if ( DEBUG == 2 ) {
+		print STDERR "$content\n\n";
 	}
 
 	# All done!
@@ -703,7 +720,9 @@ sub TransactionDone {
 	my $content = SOAP::Serializer->prefix( 's' )->envelope(
 		'response',
 		SOAP::Data->name( $response->soapmethod() . 'Response' )->uri( $response->soapuri() ),
-		$response->content(),
+
+		# Do we need to serialize the content or not?
+		( $_[STATE] eq 'RAWDONE' ? SOAP::Data->type( 'xml', $response->content() ) : $response->content() ),
 	);
 
 	# Set up the response!
@@ -716,7 +735,11 @@ sub TransactionDone {
 
 	# Debug stuff
 	if ( DEBUG ) {
-		warn 'Finished processing Service ' . $response->soapservice . ' -> Method ' . $response->soapmethod . ' for ' . $response->connection->remote_ip();
+		warn 'Finished processing ' . $_[STATE] . ' Service ' . $response->soapservice . ' -> Method ' . $response->soapmethod . ' for ' . $response->connection->remote_ip();
+	}
+
+	if ( DEBUG == 2 ) {
+		print STDERR "$content\n\n";
 	}
 
 	# All done!
@@ -799,6 +822,15 @@ POE::Component::Server::SOAP - publish POE event handlers via SOAP over HTTP
 	}
 
 =head1 CHANGES
+
+=head2 1.08
+
+	vkroll @ #POE @ MAGNet made some excellent suggestions
+		- print the exact SOAP envelope to stderr if DEBUG == 2
+		- the ability to generate the XML yourself, added the RAWDONE/RAWFAULT events
+	Realized that the examples were using ssl, I did not supply directions so the ssl part was removed
+	Hopefully by the next release or two, full SOAP/1.2 support will be included ( also waiting on SOAP::Lite to get out of beta )
+	The next release will have the option to "attach" to an existing SimpleHTTP session ( so there is 1 less webserver running, yay! )
 
 =head2 1.07
 
@@ -987,6 +1019,24 @@ There are only a few ways to communicate with Server::SOAP.
 	To get greater throughput and response time, do not post() to the DONE event, call() it!
 	However, this will force your program to block while servicing SOAP requests...
 
+=item C<RAWDONE>
+
+	This event accepts only one argument: the SOAP::Response object we sent to the handler.
+
+	Calling this event implies that this particular request is done, and will proceed to close the socket.
+
+	The only difference between this and the DONE event is that the content in $response->content() will not
+	be serialized and passed through intact to the SOAP envelope. This is useful if you generate the xml yourself.
+
+	NOTE:
+		- The xml content does not need to have a <?xml version="1.0" encoding="UTF-8"> header
+		- In SOAP::Lite, the client sees '<foo>54</foo><bar>89</bar>' as '54' only!
+			The solution is to enclose the xml in another name, i.e. '<data><foo>54</foo><bar>89</bar></data>'
+		- If the xml is malformed or is not escaped properly, the client will get terribly confused!
+
+	It will be inserted here:
+		...<soap:Body><namesp4:TestResponse xmlns:namesp4="http://localhost:32080/">YOURSTUFFHERE</namesp4:TestResponse></soap:Body>...
+
 =item C<FAULT>
 
 	This event accepts five arguments:
@@ -1004,6 +1054,20 @@ There are only a few ways to communicate with Server::SOAP.
 		- HTTP Status = 500
 		- HTTP Header value of 'Content-Type' = 'text/xml'
 		- HTTP Content = SOAP Envelope of the fault ( overwriting anything that was there )
+
+=item C<RAWFAULT>
+
+	This event accepts only one argument: the SOAP::Response object we sent to the handler.
+
+	Calling this event implies that this particular request is done, and will proceed to close the socket.
+
+	The only difference between this and the FAULT event is that you are given freedom to create your own xml for the
+	fault. It will be passed through intact to the SOAP envelope. Be sure to read the SOAP specs :)
+
+	This is very similar to the RAWDONE event, so go read the notes up there!
+
+	It will be inserted here:
+		...<soap:Body>YOURSTUFFHERE</soap:Body>...
 
 =item C<CLOSE>
 
@@ -1174,6 +1238,8 @@ You can enable debugging mode by doing this:
 	sub POE::Component::Server::SOAP::DEBUG () { 1 }
 	use POE::Component::Server::SOAP;
 
+In the case you want to see the raw xml being received/sent to the client, set DEBUG to 2.
+
 Yes, I broke a lot of things in this release ( 1.01 ), but Rocco agreed that it's best to break things
 as early as possible, so that development can move on instead of being stuck on legacy issues.
 
@@ -1225,7 +1291,7 @@ I took over this module from Rocco Caputo. Here is his stuff:
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2004 by Apocalypse
+Copyright 2005 by Apocalypse
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

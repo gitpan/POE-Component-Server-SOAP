@@ -5,6 +5,7 @@ use FindBin qw($Bin);
 use lib "$Bin/../lib";
 
 use POE;
+sub POE::Component::Server::SOAP::DEBUG () { 2 }
 use POE::Component::Server::SOAP;
 
 POE::Component::Server::SOAP->new(
@@ -12,9 +13,6 @@ POE::Component::Server::SOAP->new(
 	'ADDRESS'	=>	'localhost',
 	'PORT'		=>	32080,
 	'HOSTNAME'	=>	'MyHost.com',
-	'SIMPLEHTTP'	=>	{
-	    'SSLKEYCERT'	=>	[ 'public-key.pem', 'public-cert.pem' ],
-	},
 );
 
 POE::Session->create(
@@ -24,6 +22,7 @@ POE::Session->create(
 		Sum_Things => \&do_sum,
 		Dump_Things => \&do_dump,
 		LocalTime => \&do_time,
+		XMLize => \&do_xml,
 	}
 );
 
@@ -34,6 +33,7 @@ sub setup_service {
 	my $kernel = $_[KERNEL];
 	$kernel->alias_set( 'MyServer' );
 	$kernel->post( 'MySOAP', 'ADDMETHOD', 'MyServer', 'Sum_Things' );
+	$kernel->post( 'MySOAP', 'ADDMETHOD', 'MyServer', 'XMLize' );
 	$kernel->post( 'MySOAP', 'ADDMETHOD', 'MyServer', 'Dump_Things', 'MyServer', 'DUMP' );
 	$kernel->post( 'MySOAP', 'ADDMETHOD', 'MyServer', 'LocalTime', 'TimeServer', 'Time' );
 }
@@ -73,4 +73,10 @@ sub do_time {
 	$response->content( scalar( localtime() ) );
 	$_[KERNEL]->post( 'MySOAP', 'DONE', $response );
 	#$_[KERNEL]->post( 'MySOAP', 'SHUTDOWN', 'GRACEFUL' );
+}
+
+sub do_xml {
+	my $response = $_[ARG0];
+	$response->content( '<data><var1>57</var1><var2>abc</var2></data>' );
+	$_[KERNEL]->post( 'MySOAP', 'RAWDONE', $response );
 }
