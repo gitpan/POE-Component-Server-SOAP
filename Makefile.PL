@@ -1,31 +1,18 @@
 #!/usr/bin/perl
-# $Id: Makefile.PL,v 1.1 2002/09/06 21:54:25 rcaputo Exp $
-
-use strict;
-use lib qw(./mylib);
 use ExtUtils::MakeMaker;
+# See lib/ExtUtils/MakeMaker.pm for details of how to influence
+# the contents of the Makefile that is written.
+WriteMakefile(
+	'NAME'		=>	'POE::Component::Server::SOAP',
+	'VERSION_FROM'	=>	'lib/POE/Component/Server/SOAP.pm', # finds $VERSION
+	'PREREQ_PM'	=> {
+		'POE'					=>	'0.27',
+		'POE::Component::Server::SimpleHTTP'	=>	0,
+		'SOAP::EnvelopeMaker'			=>	0,
+		'SOAP::Defs'				=>	0,
+		'SOAP::Parser'				=>	0,
 
-# Ensure that ./CHANGES exists.
-open(CHANGES, ">>CHANGES");
-close CHANGES;
-
-# Write that makefile.
-WriteMakefile
-  ( NAME         => 'POE::Component::Server::SOAP',
-    AUTHOR       => 'Rocco Caputo <rcaputo@cpan.org>',
-    ABSTRACT     => 'POE component for providing SOAP services.',
-    VERSION_FROM => 'SOAP.pm',
-    PM           => { 'SOAP.pm' => '$(INST_LIBDIR)/SOAP.pm',
-                    },
-    PREREQ_PM    => { 'POE'                          => 0.22,
-                      'SOAP::EnvelopeMaker'          => 0.28,
-                      'POE::Component::Server::HTTP' => 0.02,
-                    },
-    dist         =>
-    { COMPRESS   => 'gzip -9f',
-      SUFFIX     => 'gz',
-      PREOP      => ( 'cvs-log.perl | ' .
-                      'tee ./$(DISTNAME)-$(VERSION)/CHANGES > ./CHANGES'
-                    ),
-    },
-  );
+	},
+	'ABSTRACT_FROM'	=> 'lib/POE/Component/Server/SOAP.pm', # retrieve abstract from module
+	'AUTHOR'	=> 'Apocalypse <APOCAL@cpan.org>',
+);

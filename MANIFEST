@@ -1,8 +1,9 @@
-# $Id: MANIFEST,v 1.1 2002/09/06 21:54:25 rcaputo Exp $
 CHANGES
 MANIFEST
 Makefile.PL
 README
-SOAP.pm
+lib/POE/Component/Server/SOAP.pm
+lib/POE/Component/Server/SOAP/Response.pm
 examples/test-client.perl
 examples/test-server.perl
+META.yml                                 Module meta-data (added by MakeMaker)
