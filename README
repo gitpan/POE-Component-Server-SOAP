@@ -1,0 +1,65 @@
+$Id: README,v 1.1 2002/09/06 21:54:25 rcaputo Exp $
+
+--------
+Abstract
+--------
+
+POE::Component::Server::SOAP adds asynchronous, event driven SOAP over
+HTTP to your POE applications.  It works very well with synchronous
+SOAP::Lite clients, even.
+
+------------
+Requirements
+------------
+
+POE::Component::Server::SOAP requires the following modules, each of
+which probably has its own requirements.
+
+  POE::Component::Server::HTTP
+  SOAP::EnvelopeMaker
+
+It is recommended to use some installation utility such as CPANPLUS,
+CPAN, or ActiveState's PPM to ensure that dependencies are included.
+
+------------------
+Basic Installation
+------------------
+
+POE::Component::Server::SOAP may be installed through the CPAN shell
+in the usual CPAN shell manner.  This typically is:
+
+  $ perl -MCPAN -e 'intstall POE::Component::Server::SOAP'
+
+You can also read this README from the CPAN shell:
+
+  $ perl -MCPAN -e shell
+  cpan> readme POE::Component::Server::SOAP
+
+And you can install the component from the CPAN prompt as well:
+
+  cpan> install POE::Component::Server::SOAP
+
+-------------------
+Manual Installation
+-------------------
+
+This component may also be installed manually.
+<ftp://ftp.cpan.org/pub/CPAN/authors/id/R/RC/RCAPUTO/> or a similarly
+named directory at your favorite CPAN mirror should hold the latest
+version.
+
+Downloading and unpacking the distribution are left as exercises for
+the reader.  To build and test it:
+
+  perl Makefile.PL
+  make test
+
+When you're ready to install the component:
+
+  make install
+
+Now it should be ready to use.
+
+Thanks for reading!
+
+-- Rocco Caputo / troc@pobox.com / poe.perl.org / poe.sourceforge.net
