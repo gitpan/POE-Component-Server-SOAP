@@ -6,7 +6,7 @@ use strict qw(subs vars refs);				# Make sure we can't mess up
 use warnings FATAL => 'all';				# Enable warnings to catch errors
 use Carp qw(croak);
 
-our $VERSION = '1.05';
+our $VERSION = '1.06';
 
 # Import the proper POE stuff
 use POE;
@@ -40,7 +40,7 @@ sub new {
 	my %opt = @_;
 
 	# Our own options
-	my ( $ALIAS, $ADDRESS, $PORT, $HEADERS, $HOSTNAME, $MUSTUNDERSTAND );
+	my ( $ALIAS, $ADDRESS, $PORT, $HEADERS, $HOSTNAME, $MUSTUNDERSTAND, $SIMPLEHTTP );
 
 	# You could say I should do this: $Stuff = delete $opt{'Stuff'}
 	# But, that kind of behavior is not defined, so I would not trust it...
@@ -155,9 +155,15 @@ sub new {
 		}
 	}
 
+	# Get the SIMPLEHTTP
+	if ( exists $opt{'SIMPLEHTTP'} and defined $opt{'SIMPLEHTTP'} and ref( $opt{'SIMPLEHTTP'} ) eq 'HASH' ) {
+		$SIMPLEHTTP = $opt{'SIMPLEHTTP'};
+		delete $opt{'SIMPLEHTTP'};
+	}
+
 	# Anything left over is unrecognized
-	if ( keys %opt > 0 ) {
-		if ( DEBUG ) {
+	if ( DEBUG ) {
+		if ( keys %opt > 0 ) {
 			croak( 'Unrecognized options were present in POE::Component::Server::SOAP->new -> ' . join( ', ', keys %opt ) );
 		}
 	}
@@ -196,6 +202,7 @@ sub new {
 			'HEADERS'		=>	$HEADERS,
 			'HOSTNAME'		=>	$HOSTNAME,
 			'MUSTUNDERSTAND'	=>	$MUSTUNDERSTAND,
+			'SIMPLEHTTP'		=>	$SIMPLEHTTP,
 		},
 	) or die 'Unable to create a new session!';
 
@@ -222,6 +229,7 @@ sub StartServer {
 				'EVENT'         =>      'Got_Request',
 			},
 		],
+		( defined $_[HEAP]->{'SIMPLEHTTP'} ? ( %{ $_[HEAP]->{'SIMPLEHTTP'} } ) : () ),
 	) or die 'Unable to create the HTTP Server';
 
 	# Success!
@@ -733,7 +741,6 @@ sub TransactionClose {
 }
 
 1;
-
 __END__
 
 =head1 NAME
@@ -792,6 +799,11 @@ POE::Component::Server::SOAP - publish POE event handlers via SOAP over HTTP
 	}
 
 =head1 CHANGES
+
+=head2 1.06
+
+	Rearranged DEBUG printouts
+	Added ability to pass arguments to SimpleHTTP ( mainly for the SSL stuff )
 
 =head2 1.05
 
@@ -869,7 +881,7 @@ To start Server::SOAP, just call it's new method:
 
 This method will die on error or return success.
 
-This constructor accepts only 6 options.
+This constructor accepts only 7 options.
 
 =over 4
 
@@ -905,6 +917,14 @@ For more information, consult the L<HTTP::Headers> module.
 
 This is a boolean value, controlling whether Server::SOAP will check for this value in the Headers and Fault if it is present.
 This will default to true.
+
+=item C<SIMPLEHTTP>
+
+This allows you to pass options to the SimpleHTTP backend. One of the real reasons is to support SSL in Server::SOAP, yay!
+To learn how to use SSL, please consult the POE::Component::Server::SimpleHTTP documentation. Of course, you could totally screw
+up things, just use this with caution :)
+
+You must pass a hash reference as the value, because it will be expanded and put in the Server::SimpleHTTP->new() constructor.
 
 =back
 
@@ -1148,6 +1168,21 @@ You can enable debugging mode by doing this:
 Yes, I broke a lot of things in this release ( 1.01 ), but Rocco agreed that it's best to break things
 as early as possible, so that development can move on instead of being stuck on legacy issues.
 
+=head2 Using SSL
+
+So you want to use SSL in Server::SOAP? Here's a example on how to do it:
+
+	POE::Component::Server::SOAP->new(
+		...
+		'SIMPLEHTTP'	=>	{
+			'SSLKEYCERT'	=>	[ 'public-key.pem', 'public-cert.pem' ],
+		},
+	);
+
+	# And that's it provided you've already created the necessary key + certificate file :)
+	
+Ah, to use SSL in SOAP::Lite, simply use https://blah.com instead of http://blah.com
+
 =head1 SEE ALSO
 
 	The examples directory that came with this component.
@@ -1163,6 +1198,8 @@ as early as possible, so that development can move on instead of being stuck on 
 	L<POE::Component::Server::SimpleHTTP>
 
 	L<SOAP::Lite>
+
+	L<POE::Component::SSLify>
 
 =head1 AUTHOR
 

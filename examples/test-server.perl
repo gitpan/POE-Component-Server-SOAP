@@ -12,6 +12,9 @@ POE::Component::Server::SOAP->new(
 	'ADDRESS'	=>	'localhost',
 	'PORT'		=>	32080,
 	'HOSTNAME'	=>	'MyHost.com',
+	'SIMPLEHTTP'	=>	{
+	    'SSLKEYCERT'	=>	[ 'public-key.pem', 'public-cert.pem' ],
+	},
 );
 
 POE::Session->create(
@@ -69,4 +72,5 @@ sub do_time {
 	my $response = $_[ARG0];
 	$response->content( scalar( localtime() ) );
 	$_[KERNEL]->post( 'MySOAP', 'DONE', $response );
+	#$_[KERNEL]->post( 'MySOAP', 'SHUTDOWN', 'GRACEFUL' );
 }
