@@ -6,7 +6,7 @@ use strict qw(subs vars refs);				# Make sure we can't mess up
 use warnings FATAL => 'all';				# Enable warnings to catch errors
 use Carp qw(croak);
 
-our $VERSION = '1.06';
+our $VERSION = '1.07';
 
 # Import the proper POE stuff
 use POE;
@@ -800,6 +800,10 @@ POE::Component::Server::SOAP - publish POE event handlers via SOAP over HTTP
 
 =head1 CHANGES
 
+=head2 1.07
+
+	Made the documentation clearer for ADDRESS, thanks to Kaare Rasmussen!
+
 =head2 1.06
 
 	Rearranged DEBUG printouts
@@ -893,6 +897,11 @@ This will default to "SOAPServer"
 =item C<ADDRESS>
 
 This value will be passed to POE::Component::Server::SimpleHTTP to bind to.
+
+Examples:
+	ADDRESS => 0			# Bind to all addresses + localhost
+	ADDRESS => 'localhost'		# Bind to localhost
+	ADDRESS => '192.168.1.1'	# Bind to specified IP
 
 =item C<PORT>
 
@@ -1180,7 +1189,7 @@ So you want to use SSL in Server::SOAP? Here's a example on how to do it:
 	);
 
 	# And that's it provided you've already created the necessary key + certificate file :)
-	
+
 Ah, to use SSL in SOAP::Lite, simply use https://blah.com instead of http://blah.com
 
 =head1 SEE ALSO
