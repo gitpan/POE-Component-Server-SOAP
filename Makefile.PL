@@ -1,4 +1,3 @@
-#!/usr/bin/perl
 use ExtUtils::MakeMaker;
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
@@ -7,7 +6,7 @@ WriteMakefile(
 	'VERSION_FROM'	=>	'lib/POE/Component/Server/SOAP.pm', # finds $VERSION
 	'PREREQ_PM'	=> {
 		'POE'					=>	'0.27',
-		'POE::Component::Server::SimpleHTTP'	=>	0,
+		'POE::Component::Server::SimpleHTTP'	=>	'1.06',
 		'SOAP::EnvelopeMaker'			=>	0,
 		'SOAP::Defs'				=>	0,
 		'SOAP::Parser'				=>	0,

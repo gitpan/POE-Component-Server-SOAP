@@ -1,65 +1,37 @@
-$Id: README,v 1.1 2002/09/06 21:54:25 rcaputo Exp $
+POE/Component/Server/SOAP version 1.03
+============================================
 
---------
-Abstract
---------
+INSTALLATION
 
-POE::Component::Server::SOAP adds asynchronous, event driven SOAP over
-HTTP to your POE applications.  It works very well with synchronous
-SOAP::Lite clients, even.
+To install this module type the following:
 
-------------
-Requirements
-------------
+   perl Makefile.PL
+   make
+   make test
+   make install
 
-POE::Component::Server::SOAP requires the following modules, each of
-which probably has its own requirements.
+DEPENDENCIES
 
-  POE::Component::Server::HTTP
-  SOAP::EnvelopeMaker
+This module requires these other modules and libraries:
 
-It is recommended to use some installation utility such as CPANPLUS,
-CPAN, or ActiveState's PPM to ensure that dependencies are included.
+	POE					=>	0.27
+	POE::Component::Server::SimpleHTTP	=>	1.06
+	SOAP::EnvelopeMaker
+	SOAP::Defs
+	SOAP::Parser
 
-------------------
-Basic Installation
-------------------
+COPYRIGHT AND LICENSE
 
-POE::Component::Server::SOAP may be installed through the CPAN shell
-in the usual CPAN shell manner.  This typically is:
+Copyright 2004 by Apocalypse
 
-  $ perl -MCPAN -e 'intstall POE::Component::Server::SOAP'
+I took over this module from Rocco Caputo. Here is his stuff:
 
-You can also read this README from the CPAN shell:
+	POE::Component::Server::SOAP is Copyright 2002 by Rocco Caputo.  All
+	rights are reserved.  POE::Component::Server::SOAP is free software;
+	you may redistribute it and/or modify it under the same terms as Perl
+	itself.
 
-  $ perl -MCPAN -e shell
-  cpan> readme POE::Component::Server::SOAP
+	Rocco may be contacted by e-mail via rcaputo@cpan.org.
 
-And you can install the component from the CPAN prompt as well:
-
-  cpan> install POE::Component::Server::SOAP
-
--------------------
-Manual Installation
--------------------
-
-This component may also be installed manually.
-<ftp://ftp.cpan.org/pub/CPAN/authors/id/R/RC/RCAPUTO/> or a similarly
-named directory at your favorite CPAN mirror should hold the latest
-version.
-
-Downloading and unpacking the distribution are left as exercises for
-the reader.  To build and test it:
-
-  perl Makefile.PL
-  make test
-
-When you're ready to install the component:
-
-  make install
-
-Now it should be ready to use.
-
-Thanks for reading!
-
--- Rocco Caputo / troc@pobox.com / poe.perl.org / poe.sourceforge.net
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.

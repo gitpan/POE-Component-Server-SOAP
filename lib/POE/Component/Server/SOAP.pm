@@ -6,14 +6,18 @@ use strict qw(subs vars refs);				# Make sure we can't mess up
 use warnings FATAL => 'all';				# Enable warnings to catch errors
 use Carp qw(croak);
 
-use vars qw($VERSION);
-$VERSION = '1.02';
+our $VERSION = '1.03';
 
+# Import the proper POE stuff
 use POE;
 use POE::Component::Server::SimpleHTTP;
+
+# We need SOAP stuff
 use SOAP::Defs;
 use SOAP::EnvelopeMaker;
 use SOAP::Parser;
+
+# Our own modules
 use POE::Component::Server::SOAP::Response;
 
 # Set some constants
@@ -55,6 +59,11 @@ sub new {
 
 		# Set the default
 		$ALIAS = 'SOAPServer';
+
+		# Remove any lingering ALIAS
+		if ( exists $opt{'ALIAS'} ) {
+			delete $opt{'ALIAS'};
+		}
 	}
 
 	# Get the PORT
@@ -69,6 +78,11 @@ sub new {
 
 		# Set the default
 		$PORT = 80;
+
+		# Remove any lingering PORT
+		if ( exists $opt{'PORT'} ) {
+			delete $opt{'PORT'};
+		}
 	}
 
 	# Get the ADDRESS
@@ -96,8 +110,13 @@ sub new {
 
 		# Set the default
 		$HEADERS = {
-			'SERVER'	=>	'POE::Component::Server::SOAP/' . $VERSION,
+			'Server'	=>	'POE::Component::Server::SOAP/' . $VERSION,
 		};
+
+		# Remove any lingering HEADERS
+		if ( exists $opt{'HEADERS'} ) {
+			delete $opt{'HEADERS'};
+		}
 	}
 
 	# Get the HOSTNAME
@@ -112,6 +131,11 @@ sub new {
 
 		# Set the default
 		$HOSTNAME = undef;
+
+		# Remove any lingering HOSTNAME
+		if ( exists $opt{'HOSTNAME'} ) {
+			delete $opt{'HOSTNAME'};
+		}
 	}
 
 	# Anything left over is unrecognized
@@ -139,8 +163,9 @@ sub new {
 
 			# Transaction handlers
 			'Got_Request'	=>	\&TransactionStart,
-			'ERROR'		=>	\&TransactionError,
+			'FAULT'		=>	\&TransactionFault,
 			'DONE'		=>	\&TransactionDone,
+			'CLOSE'		=>	\&TransactionClose,
 		},
 
 		# Our own heap
@@ -342,7 +367,7 @@ sub TransactionStart {
 	# Check for error in parsing of request
 	if ( ! defined $request ) {
 		# Create a new error and send it off!
-		$_[KERNEL]->yield( 'ERROR',
+		$_[KERNEL]->yield( 'FAULT',
 			$response,
 			$soap_fc_client,
 			'Bad Request',
@@ -355,7 +380,7 @@ sub TransactionStart {
 	my $query_string = $request->uri->query();
 	if ( ! defined $query_string or $query_string !~ /\bsession=(.+ $ )/x ) {
 		# Create a new error and send it off!
-		$_[KERNEL]->yield( 'ERROR',
+		$_[KERNEL]->yield( 'FAULT',
 			$response,
 			$soap_fc_client,
 			'Bad Request',
@@ -370,7 +395,7 @@ sub TransactionStart {
 	# Check to see if this service exists
 	if ( ! exists $_[HEAP]->{'INTERFACES'}->{ $service } ) {
 		# Create a new error and send it off!
-		$_[KERNEL]->yield( 'ERROR',
+		$_[KERNEL]->yield( 'FAULT',
 			$response,
 			$soap_fc_client,
 			'Bad Request',
@@ -382,7 +407,7 @@ sub TransactionStart {
 	# We only handle text/xml content
 	if ( $request->header('Content-Type') !~ /^text\/xml(;.*)?$/ ) {
 		# Create a new error and send it off!
-		$_[KERNEL]->yield( 'ERROR',
+		$_[KERNEL]->yield( 'FAULT',
 			$response,
 			$soap_fc_client,
 			'Bad Request',
@@ -395,7 +420,7 @@ sub TransactionStart {
 	my $soap_method_name = $request->header('SOAPAction');
 	if ( ! defined $soap_method_name or ! length( $soap_method_name ) ) {
 		# Create a new error and send it off!
-		$_[KERNEL]->yield( 'ERROR',
+		$_[KERNEL]->yield( 'FAULT',
 			$response,
 			$soap_fc_client,
 			'Bad Request',
@@ -407,7 +432,7 @@ sub TransactionStart {
 	# Get the method name
 	if ( $soap_method_name !~ /^([\"\']?)(\S+)\#(\S+)\1$/ ) {
 		# Create a new error and send it off!
-		$_[KERNEL]->yield( 'ERROR',
+		$_[KERNEL]->yield( 'FAULT',
 			$response,
 			$soap_fc_client,
 			'Bad Request',
@@ -422,7 +447,7 @@ sub TransactionStart {
 	# Check to see if this method exists
 	if ( ! exists $_[HEAP]->{'INTERFACES'}->{ $service }->{ $method } ) {
 		# Create a new error and send it off!
-		$_[KERNEL]->yield( 'ERROR',
+		$_[KERNEL]->yield( 'FAULT',
 			$response,
 			$soap_fc_client,
 			'Bad Request',
@@ -443,7 +468,7 @@ sub TransactionStart {
 	# Check for errors
 	if ( $@ ) {
 		# Create a new error and send it off!
-		$_[KERNEL]->yield( 'ERROR',
+		$_[KERNEL]->yield( 'FAULT',
 			$response,
 			$soap_fc_server,
 			'Application Faulted',
@@ -497,8 +522,8 @@ sub TransactionStart {
 	return 1;
 }
 
-# Creates the error and sends it off
-sub TransactionError {
+# Creates the fault and sends it off
+sub TransactionFault {
 	# ARG0 = SOAP::Response, ARG1 = SOAP faultcode, ARG2 = SOAP faultstring, ARG3 = SOAP Fault Detail, ARG4 = SOAP Fault Actor
 	my ( $response, $fault_code, $fault_string, $fault_detail, $fault_actor ) = @_[ ARG0 .. ARG4 ];
 
@@ -506,7 +531,7 @@ sub TransactionError {
 	if ( ! defined $response ) {
 		# Debug stuff
 		if ( DEBUG ) {
-			warn 'Received ERROR event but no arguments!';
+			warn 'Received FAULT event but no arguments!';
 		}
 		return undef;
 	}
@@ -559,7 +584,7 @@ sub TransactionError {
 
 	# Debugging stuff
 	if ( DEBUG ) {
-		warn 'Finished processing ERROR response';
+		warn 'Finished processing FAULT response';
 	}
 
 	# All done!
@@ -594,6 +619,23 @@ sub TransactionDone {
 	# Debug stuff
 	if ( DEBUG ) {
 		warn "Finished processing Method " . $response->soapmethod();
+	}
+
+	# All done!
+	return 1;
+}
+
+# Close the transaction
+sub TransactionClose {
+	# ARG0 = SOAP::Response object
+	my $response = $_[ARG0];
+
+	# Send it off to the backend, signaling CLOSE
+	$_[KERNEL]->post( $_[HEAP]->{'ALIAS'} . '-BACKEND', 'CLOSE', $response );
+
+	# Debug stuff
+	if ( DEBUG ) {
+		warn "Closing the socket of this Method " . $response->soapmethod();
 	}
 
 	# All done!
@@ -651,13 +693,22 @@ POE::Component::Server::SOAP - publish POE event handlers via SOAP over HTTP
 
 		# Fake an error
 		if ( $sum < 100 ) {
-			$_[KERNEL]->post( 'MySOAP', 'ERROR', $response, 'Add:Error', 'The sum must be above 100' );
+			$_[KERNEL]->post( 'MySOAP', 'FAULT', $response, 'Client.Add.Error', 'The sum must be above 100' );
 		} else {
-			$_[KERNEL]->post( 'MySOAP', 'DONE', $response, "Thanks.  Sum is: $sum" );
+			# Add the content
+			$response->content( "Thanks.  Sum is: $sum" );
+			$_[KERNEL]->post( 'MySOAP', 'DONE', $response );
 		}
 	}
 
 =head1 CHANGES
+
+=head2 1.03
+
+	I realized that I didn't like having the SOAP Fault event called "ERROR" and changed it to "FAULT" :)
+	Fixed the Fault Code in the SYNOPSIS from Add:Error to the more SOAPy one
+	Rocco Caputo helped me with some POD errors/typos/stuff
+	Fixed new() to remove options that exist, but is undef -> results in croaking when DEBUG is on
 
 =head2 1.02
 
@@ -679,7 +730,7 @@ POE::Component::Server::SOAP - publish POE event handlers via SOAP over HTTP
 
 =head1 DESCRIPTION
 
-This module makes serving up SOAP/1.1 requests a breeze in POE.
+This module makes serving SOAP/1.1 requests a breeze in POE.
 
 The hardest thing to understand in this module is the SOAP Body. That's it!
 
@@ -737,10 +788,10 @@ If this is not supplied, POE::Component::Server::SimpleHTTP will use Sys::Hostna
 =item C<HEADERS>
 
 This should be a hashref, that will become the default headers on all HTTP::Response objects.
-You can override this in individual requests by setting it via $request->header( ... )
+You can override this in individual requests by setting it via $response->header( ... )
 
 The default header is:
-	SERVER => 'POE::Component::Server::SOAP/' . $VERSION
+	Server => 'POE::Component::Server::SOAP/' . $VERSION
 
 For more information, consult the L<HTTP::Headers> module.
 
@@ -767,7 +818,7 @@ There are only a few ways to communicate with Server::SOAP.
 	To get greater throughput and response time, do not post() to the DONE event, call() it!
 	However, this will force your program to block while servicing SOAP requests...
 
-=item C<ERROR>
+=item C<FAULT>
 
 	This event accepts five arguments:
 		- the HTTP::Response object we sent to the handler
@@ -778,10 +829,18 @@ There are only a few ways to communicate with Server::SOAP.
 
 	Again, calling this event implies that this particular request is done, and will proceed to close the socket.
 
+	Calling this event will generate a SOAP Fault and return it to the client.
+
 	NOTE: This method automatically sets some parameters:
 		- HTTP Status = 500
 		- HTTP Header value of 'Content-Type' = 'text/xml'
 		- HTTP Content = SOAP Envelope of the fault ( overwriting anything that was there )
+
+=item C<CLOSE>
+
+	This event accepts only one argument: the SOAP::Response object we sent to the handler.
+
+	Calling this event will proceed to close the socket, not sending any output.
 
 =item C<ADDMETHOD>
 
@@ -844,6 +903,11 @@ I cannot guarantee what will be in the body, it is all up to the SOAP serializer
 to remove the 'soap_typeuri' and 'soap_typename' if the body is a hash and those keys exist. ( They will still be accessible via the
 methods in the Server::SOAP::Response object ) I can provide some examples:
 
+	NOTE: It is much easier to play around with parameters if they are properly encoded.
+	If you are using SOAP::Lite, make extensive use of SOAP::Data->name() to create parameters :)
+
+	NOTE: It is a known problem that passing arrays will make SOAP::Parser choke, I'm working on a new implementation.
+
 	Calling a SOAP method with an array:
 		print SOAP::Lite
 			-> uri('http://localhost:32080/')
@@ -862,6 +926,8 @@ methods in the Server::SOAP::Response object ) I can provide some examples:
 			'c-gensym3' => '8',
 			'c-gensym7' => '7'
 		};
+
+		NOTE: The original array ordering can be received by sorting on the keys.
 
 	Calling a SOAP method with a hash:
 		print SOAP::Lite
@@ -907,6 +973,13 @@ When you're done with the SOAP request, stuff whatever output you have into the 
 The only thing left to do is send it off to the DONE event :)
 
 	$_[KERNEL]->post( 'MySOAP', 'DONE', $response );
+
+if there's an error, you can send it to the FAULT event, which will convert it into a SOAP fault.
+
+	# See this website for more details about what "SOAP Fault" is :)
+	# http://www.w3.org/TR/2000/NOTE-SOAP-20000508/#_Toc478383507
+
+	$_[KERNEL]->post( 'MySOAP', 'FAULT', $response, 'Client.Authentication', 'Invalid password' );
 
 =head2 Server::SOAP Notes
 
