@@ -6,7 +6,7 @@ use strict qw(subs vars refs);				# Make sure we can't mess up
 use warnings FATAL => 'all';				# Enable warnings to catch errors
 use Carp qw(croak);
 
-our $VERSION = '1.04';
+our $VERSION = '1.05';
 
 # Import the proper POE stuff
 use POE;
@@ -168,10 +168,12 @@ sub new {
 			# Generic stuff
 			'_start'	=>	\&StartServer,
 			'_stop'		=>	sub {},
-			'_child'	=>	sub {},
+			'_child'	=>	\&SmartShutdown,
 
 			# Shuts down the server
 			'SHUTDOWN'	=>	\&StopServer,
+			'STOPLISTEN'	=>	\&StopListen,
+			'STARTLISTEN'	=>	\&StartListen,
 
 			# Adds/deletes Methods
 			'ADDMETHOD'	=>	\&AddMethod,
@@ -221,15 +223,61 @@ sub StartServer {
 			},
 		],
 	) or die 'Unable to create the HTTP Server';
+
+	# Success!
+	return 1;
 }
 
 # Shuts down the server
 sub StopServer {
 	# Tell the webserver to die!
-	$_[KERNEL]->post( $_[HEAP]->{'ALIAS'} . '-BACKEND', 'SHUTDOWN' );
+	if ( defined $_[ARG0] and $_[ARG0] eq 'GRACEFUL' ) {
+		# Shutdown gently...
+		$_[KERNEL]->call( $_[HEAP]->{'ALIAS'} . '-BACKEND', 'SHUTDOWN', 'GRACEFUL' );
+	} else {
+		# Shutdown NOW!
+		$_[KERNEL]->call( $_[HEAP]->{'ALIAS'} . '-BACKEND', 'SHUTDOWN' );
+	}
 
-	# Remove our alias
-	$_[KERNEL]->alias_remove( $_[HEAP]->{'ALIAS'} );
+	# Success!
+	return 1;
+}
+
+# Stops listening for connections
+sub StopListen {
+	# Tell the webserver this!
+	$_[KERNEL]->call( $_[HEAP]->{'ALIAS'} . '-BACKEND', 'STOPLISTEN' );
+
+	# Success!
+	return 1;
+}
+
+# Starts listening for connections
+sub StartListen {
+	# Tell the webserver this!
+	$_[KERNEL]->call( $_[HEAP]->{'ALIAS'} . '-BACKEND', 'STARTLISTEN' );
+
+	# Success!
+	return 1;
+}
+
+# Watches for SimpleHTTP shutting down and shuts down ourself
+sub SmartShutdown {
+	# ARG0 = type, ARG1 = ref to session, ARG2 = parameters
+
+	# Check for real shutdown
+	if ( $_[ARG0] eq 'lose' ) {
+		# Remove our alias
+		$_[KERNEL]->alias_remove( $_[HEAP]->{'ALIAS'} );
+
+		# Debug stuff
+		if ( DEBUG ) {
+			warn 'Received _child event from SimpleHTTP, shutting down';
+		}
+	}
+
+	# All done!
+	return 1;
 }
 
 # Adds a method
@@ -285,7 +333,7 @@ sub AddMethod {
 	if ( DEBUG ) {
 		if ( exists $_[HEAP]->{'INTERFACES'}->{ $service } ) {
 			if ( exists $_[HEAP]->{'INTERFACES'}->{ $service }->{ $method } ) {
-				warn 'Overwriting old method entry in the registry!';
+				warn 'Overwriting old method entry in the registry ( ' . $service . ' -> ' . $method . ' )';
 			}
 		}
 	}
@@ -745,6 +793,12 @@ POE::Component::Server::SOAP - publish POE event handlers via SOAP over HTTP
 
 =head1 CHANGES
 
+=head2 1.05
+
+	Followed SimpleHTTP's STARTLISTEN, STOPLISTEN, SHUTDOWN GRACEFUL changes
+	Some minor internal tweaks
+	POD tweaks
+
 =head2 1.04
 
 	Big change! The deserializer is now hooked into SOAP::Lite for full SOAP/1.1 interop :)
@@ -860,13 +914,42 @@ There are only a few ways to communicate with Server::SOAP.
 
 =over 4
 
+=item C<ADDMETHOD>
+
+	This event accepts four arguments:
+		- The intended session alias
+		- The intended session event
+		- The public service name	( not required -> defaults to session alias )
+		- The public method name	( not required -> defaults to session event )
+
+	Calling this event will add the method to the registry.
+
+	NOTE: This will overwrite the old definition of a method if it exists!
+
+=item C<DELMETHOD>
+
+	This event accepts two arguments:
+		- The service name
+		- The method name
+
+	Calling this event will remove the method from the registry.
+
+	NOTE: if the service now contains no methods, it will also be removed.
+
+=item C<DELSERVICE>
+
+	This event accepts one argument:
+		- The service name
+
+	Calling this event will remove the entire service from the registry.
+
 =item C<DONE>
 
 	This event accepts only one argument: the SOAP::Response object we sent to the handler.
 
 	Calling this event implies that this particular request is done, and will proceed to close the socket.
 
-	The content in $response->content() will be automatically serialized via SOAP::EnvelopeMaker
+	The content in $response->content() will be automatically serialized via SOAP::Lite's SOAP::Serializer
 
 	NOTE: This method automatically sets some parameters:
 		- HTTP Status = 200
@@ -899,45 +982,31 @@ There are only a few ways to communicate with Server::SOAP.
 
 	Calling this event will proceed to close the socket, not sending any output.
 
-=item C<ADDMETHOD>
+=item C<STARTLISTEN>
 
-	This event accepts four arguments:
-		- The intended session alias
-		- The intended session event
-		- The public service name	( not required -> defaults to session alias )
-		- The public method name	( not required -> defaults to session event )
+	Starts the listening socket, if it was shut down
 
-	Calling this event will add the method to the registry.
+=item C<STOPLISTEN>
 
-	NOTE: This will overwrite the old definition of a method if it exists!
-
-=item C<DELMETHOD>
-
-	This event accepts two arguments:
-		- The service name
-		- The method name
-
-	Calling this event will remove the method from the registry.
-
-	NOTE: if the service now contains no methods, it will also be removed.
-
-=item C<DELSERVICE>
-
-	This event accepts one argument:
-		- The service name
-
-	Calling this event will remove the entire service from the registry.
+	Simply a wrapper for SHUTDOWN GRACEFUL, but will not shutdown Server::SOAP if there is no more requests
 
 =item C<SHUTDOWN>
 
-	Calling this event makes Server::SOAP shut down by closing it's TCP socket.
+	Without arguments, Server::SOAP does this:
+		Close the listening socket
+		Kills all pending requests by closing their sockets
+		Removes it's alias
+
+	With an argument of 'GRACEFUL', Server::SOAP does this:
+		Close the listening socket
+		Waits for all pending requests to come in via DONE/FAULT/CLOSE, then removes it's alias
 
 =back
 
 =head2 Processing Requests
 
 if you're new to the world of SOAP, reading the documentation by the excellent author of SOAP::Lite is recommended!
-It also would help to read some stuff at http://www.soapware.org/ -> They have some excellent links :)
+It also would help to read some stuff at http://www.soapware.org/ -> they have some excellent links :)
 
 Now, once you have set up the services/methods, what do you expect from Server::SOAP?
 Every request is pretty straightforward, you just get a Server::SOAP::Response object in ARG0.
@@ -1058,7 +1127,7 @@ The only thing left to do is send it off to the DONE event :)
 
 	$_[KERNEL]->post( 'MySOAP', 'DONE', $response );
 
-if there's an error, you can send it to the FAULT event, which will convert it into a SOAP fault.
+If there's an error, you can send it to the FAULT event, which will convert it into a SOAP fault.
 
 	# See this website for more details about what "SOAP Fault" is :)
 	# http://www.w3.org/TR/2000/NOTE-SOAP-20000508/#_Toc478383507
@@ -1081,19 +1150,19 @@ as early as possible, so that development can move on instead of being stuck on 
 
 =head1 SEE ALSO
 
-The examples directory that came with this component.
+	The examples directory that came with this component.
 
-L<POE>
+	L<POE>
 
-L<HTTP::Response>
+	L<HTTP::Response>
 
-L<POE::Component::Server::SOAP::Response>
+	L<HTTP::Request>
 
-L<SOAP::Lite>
+	L<POE::Component::Server::SOAP::Response>
 
-L<SOAP::Parser>
+	L<POE::Component::Server::SimpleHTTP>
 
-L<SOAP>
+	L<SOAP::Lite>
 
 =head1 AUTHOR
 

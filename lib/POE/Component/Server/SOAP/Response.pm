@@ -92,7 +92,12 @@ Nothing.
 
 =head1 SEE ALSO
 
+	L<POE::Component::Server::SimpleHTTP>
+
+	L<POE::Component::Server::SimpleHTTP::Connection>
+
 	L<POE::Component::Server::SOAP>
+
 	L<SOAP::Lite>
 
 =head1 AUTHOR

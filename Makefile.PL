@@ -6,7 +6,7 @@ WriteMakefile(
 	'VERSION_FROM'	=>	'lib/POE/Component/Server/SOAP.pm', # finds $VERSION
 	'PREREQ_PM'	=> {
 		'POE'					=>	'0.27',
-		'POE::Component::Server::SimpleHTTP'	=>	'1.06',
+		'POE::Component::Server::SimpleHTTP'	=>	'1.09',
 		'SOAP::Lite'				=>	'0.55',
 
 	},
