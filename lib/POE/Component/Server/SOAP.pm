@@ -7,7 +7,7 @@ use warnings FATAL => 'all';				# Enable warnings to catch errors
 use Carp qw(croak);
 
 use vars qw($VERSION);
-$VERSION = '1.01';
+$VERSION = '1.02';
 
 use POE;
 use POE::Component::Server::SimpleHTTP;
@@ -659,6 +659,11 @@ POE::Component::Server::SOAP - publish POE event handlers via SOAP over HTTP
 
 =head1 CHANGES
 
+=head2 1.02
+
+	POD Formatting ( I'm still not an expert )
+	I forgot to add the test to the MANIFEST, so the distribution had no tests... *gah*
+
 =head2 1.01
 
 	Took over ownership of this module from Rocco Caputo
@@ -821,22 +826,23 @@ It also would help to read some stuff at http://www.soapware.org/ -> They have s
 Now, once you have set up the services/methods, what do you expect from Server::SOAP?
 Every request is pretty straightforward, you just get a Server::SOAP::Response object in ARG0.
 
-The SOAP::Response object contains a wealth of information about the specified request:
-	- There is the SimpleHTTP::Connection object, which gives you connection information
-	- There is the various SOAP accessors provided via SOAP::Response
-	- There is the HTTP::Request object
+	The SOAP::Response object contains a wealth of information about the specified request:
+		- There is the SimpleHTTP::Connection object, which gives you connection information
+		- There is the various SOAP accessors provided via SOAP::Response
+		- There is the HTTP::Request object
 
-Example information you can get:
-	$response->connection->remote_ip()	# IP of the client
-	$response->soaprequest->uri()		# Original URI
-	$response->soapmethod()			# The SOAP method that was called
-	$response->soapbody()			# The arguments to the method
+	Example information you can get:
+		$response->connection->remote_ip()	# IP of the client
+		$response->soaprequest->uri()		# Original URI
+		$response->soapmethod()			# The SOAP method that was called
+		$response->soapbody()			# The arguments to the method
 
 Probably the most important part of SOAP::Response is the body of the message, which contains the arguments to the method call.
 The data in the body is a hash, for more information look at SOAP::Parser.
 
-I cannot guarantee what will be in the body, it is all up to the SOAP serializer/deserializer.
-However, I can provide some examples:
+I cannot guarantee what will be in the body, it is all up to the SOAP serializer/deserializer. Server::SOAP will do one thing, that is
+to remove the 'soap_typeuri' and 'soap_typename' if the body is a hash and those keys exist. ( They will still be accessible via the
+methods in the Server::SOAP::Response object ) I can provide some examples:
 
 	Calling a SOAP method with an array:
 		print SOAP::Lite
@@ -895,9 +901,11 @@ However, I can provide some examples:
 Simply experiment using Data::Dumper and you'll quickly get the hang of it!
 
 When you're done with the SOAP request, stuff whatever output you have into the content of the response object.
+
 	$response->content( 'The result is ... ' );
 
 The only thing left to do is send it off to the DONE event :)
+
 	$_[KERNEL]->post( 'MySOAP', 'DONE', $response );
 
 =head2 Server::SOAP Notes
@@ -935,6 +943,7 @@ L<SOAP>
 Apocalypse E<lt>apocal@cpan.orgE<gt>
 
 I took over this module from Rocco Caputo. Here is his stuff:
+
 	POE::Component::Server::SOAP is Copyright 2002 by Rocco Caputo.  All
 	rights are reserved.  POE::Component::Server::SOAP is free software;
 	you may redistribute it and/or modify it under the same terms as Perl

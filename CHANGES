@@ -1,5 +1,9 @@
 Revision history for Perl extension POE::Component::Server::SOAP.
 
+1.02  Thu Apr 28 12:01:25 2004
+	- POD Formatting ( I'm still not an expert )
+	- I forgot to add the test to the MANIFEST, so the distribution had no tests... *gah*
+
 1.01  Mon Apr 26 17:30:18 2004
 	- Broke tons of stuff :)
 	- Took over ownership from Rocco Caputo
