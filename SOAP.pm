@@ -1,4 +1,4 @@
-# $Id: SOAP.pm,v 1.1 2002/09/06 21:54:25 rcaputo Exp $
+# $Id: SOAP.pm,v 1.3 2002/09/07 06:18:26 rcaputo Exp $
 # License and documentation are after __END__.
 
 package POE::Component::Server::SOAP;
@@ -8,7 +8,7 @@ use strict;
 use Carp qw(croak);
 
 use vars qw($VERSION);
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 use POE;
 use POE::Component::Server::HTTP;
@@ -191,25 +191,20 @@ sub TR_SESSION  () { 1 }
 sub TR_EVENT    () { 2 }
 sub TR_HEADERS  () { 3 }
 sub TR_BODY     () { 4 }
-sub TR_PARAMS   () { 5 }
+sub TR_TYPENAME () { 5 }
+sub TR_TYPEURI  () { 6 }
 
 sub start {
   my ($type, $response, $session, $event, $headers, $body) = @_;
 
-  my @params;
-  foreach my $key (sort keys %$body) {
-    next if $key eq "soap_typeuri";
-    next if $key eq "soap_typename";
-    push @params, $body->{$key};
-  }
-
   my $self = bless
-    [ $response,  # TR_RESPONSE
-      $session,   # TR_SESSION
-      $event,     # TR_EVENT
-      $headers,   # TR_HEADERS
-      $body,      # TR_BODY
-      \@params,   # TR_PARAMS
+    [ $response, # TR_RESPONSE
+      $session,  # TR_SESSION
+      $event,    # TR_EVENT
+      $headers,  # TR_HEADERS
+      $body,     # TR_BODY
+      delete $body->{soap_typename}, # TR_TYPENAME
+      delete $body->{soap_typeuri},  # TR_TYPEURI
     ], $type;
 
   $POE::Kernel::poe_kernel->post($session, $event, $self);
@@ -218,7 +213,7 @@ sub start {
 
 sub params {
   my $self = shift;
-  return @{$self->[TR_PARAMS]};
+  return $self->[TR_BODY];
 }
 
 sub return {
@@ -228,7 +223,7 @@ sub return {
   my $em = SOAP::EnvelopeMaker->new(sub { $content .= shift });
 
   $em->set_body
-    ( $self->[TR_BODY]->{soap_typeuri},
+    ( $self->[TR_TYPEURI],
       $self->[TR_EVENT] . 'Response',
       0,
       { return => $retval }

@@ -1,4 +1,17 @@
 =========================
+2002-08-08 06:18:26 v0_02
+=========================
+
+  2002-08-08 06:18:26 by rcaputo; SOAP.pm 1.3
+
+    Increased the module's version number. 
+
+  2002-08-08 06:16:37 by rcaputo; SOAP.pm 1.2
+
+    Expose the key names in the SOAP request's body. SOAP seems to want
+    to pass everything as hashes, so that makes more sense. 
+
+=========================
 2002-07-08 21:54:25 v0_01
 =========================
 
