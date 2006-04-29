@@ -5,7 +5,8 @@ package POE::Component::Server::SOAP::Response;
 use strict qw(subs vars refs);				# Make sure we can't mess up
 use warnings FATAL => 'all';				# Enable warnings to catch errors
 
-# Initialize our version
+# Our version stuff
+# $Revision: 1109 $
 our $VERSION = '1.02';
 
 # Set our stuff to SimpleHTTP::Response

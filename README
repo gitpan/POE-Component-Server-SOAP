@@ -1,4 +1,4 @@
-POE/Component/Server/SOAP version 1.08
+POE/Component/Server/SOAP version 1.09
 ======================================
 
 INSTALLATION
@@ -20,7 +20,7 @@ This module requires these other modules and libraries:
 
 COPYRIGHT AND LICENSE
 
-Copyright 2005 by Apocalypse
+Copyright 2006 by Apocalypse
 
 I took over this module from Rocco Caputo. Here is his stuff:
 

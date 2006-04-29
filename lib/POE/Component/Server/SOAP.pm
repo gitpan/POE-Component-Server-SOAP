@@ -6,7 +6,9 @@ use strict qw(subs vars refs);				# Make sure we can't mess up
 use warnings FATAL => 'all';				# Enable warnings to catch errors
 use Carp qw(croak);
 
-our $VERSION = '1.08';
+# Our version stuff
+# $Revision: 1109 $
+our $VERSION = '1.09';
 
 # Import the proper POE stuff
 use POE;
@@ -453,7 +455,7 @@ sub TransactionStart {
 	}
 
 	# We only handle text/xml content
-	if ( $request->header('Content-Type') !~ /^text\/xml(;.*)?$/ ) {
+	if ( ! $request->header('Content-Type') || $request->header('Content-Type') !~ /^text\/xml(;.*)?$/ ) {
 		# Create a new error and send it off!
 		$_[KERNEL]->yield( 'FAULT',
 			$response,
@@ -822,6 +824,11 @@ POE::Component::Server::SOAP - publish POE event handlers via SOAP over HTTP
 	}
 
 =head1 CHANGES
+
+=head2 1.09
+
+	Yann Kerhervé spotted a bug where having no Content-Type results in a warning -> which dies...
+	This is long overdue - thanks again!
 
 =head2 1.08
 
@@ -1291,7 +1298,7 @@ I took over this module from Rocco Caputo. Here is his stuff:
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2005 by Apocalypse
+Copyright 2006 by Apocalypse
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
