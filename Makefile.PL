@@ -10,6 +10,18 @@ WriteMakefile(
 		'SOAP::Lite'				=>	'0.55',
 
 	},
-	'ABSTRACT_FROM'	=> 'lib/POE/Component/Server/SOAP.pm', # retrieve abstract from module
-	'AUTHOR'	=> 'Apocalypse <APOCAL@cpan.org>',
+	(	$] >= 5.005 ?		# Add new keywords
+		(
+			'ABSTRACT_FROM'	=> 'lib/POE/Component/Server/SOAP.pm', # retrieve abstract from module
+			'AUTHOR'	=> 'Apocalypse <APOCAL@cpan.org>',
+		) : ()
+	),
+
+	# Thanks POE!
+	'dist'		=> {
+		'PREOP'		=> (
+			"echo 'license: perl' >> ./META.yml;" .
+			'/bin/cp -f ./META.yml ./$(DISTNAME)-$(VERSION)/META.yml &2>/dev/null'
+		),
+	},
 );

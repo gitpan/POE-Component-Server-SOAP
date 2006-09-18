@@ -1,5 +1,5 @@
-POE/Component/Server/SOAP version 1.09
-======================================
+POE/Component/Server/SOAP
+=========================
 
 INSTALLATION
 
@@ -10,26 +10,7 @@ To install this module type the following:
    make test
    make install
 
-DEPENDENCIES
+MORE INFO
 
-This module requires these other modules and libraries:
-
-	POE					=>	0.27
-	POE::Component::Server::SimpleHTTP	=>	1.10
-	SOAP::Lite				=>	0.55
-
-COPYRIGHT AND LICENSE
-
-Copyright 2006 by Apocalypse
-
-I took over this module from Rocco Caputo. Here is his stuff:
-
-	POE::Component::Server::SOAP is Copyright 2002 by Rocco Caputo.  All
-	rights are reserved.  POE::Component::Server::SOAP is free software;
-	you may redistribute it and/or modify it under the same terms as Perl
-	itself.
-
-	Rocco may be contacted by e-mail via rcaputo@cpan.org.
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself.
+	# After installing:
+	perldoc POE::Component::Server::SOAP

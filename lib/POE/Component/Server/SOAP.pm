@@ -7,8 +7,8 @@ use warnings FATAL => 'all';				# Enable warnings to catch errors
 use Carp qw(croak);
 
 # Our version stuff
-# $Revision: 1109 $
-our $VERSION = '1.09';
+# $Revision: 1207 $
+our $VERSION = '1.10';
 
 # Import the proper POE stuff
 use POE;
@@ -96,7 +96,7 @@ sub new {
 	# Get the HEADERS
 	if ( exists $opt{'HEADERS'} and defined $opt{'HEADERS'} ) {
 		# Make sure it is ref to hash
-		if ( ref( $opt{'HEADERS'} ) and ref( $opt{'HEADERS'} ) eq 'HASH' ) {
+		if ( ref $opt{'HEADERS'} and ref( $opt{'HEADERS'} ) eq 'HASH' ) {
 			$HEADERS = $opt{'HEADERS'};
 			delete $opt{'HEADERS'};
 		} else {
@@ -823,68 +823,6 @@ POE::Component::Server::SOAP - publish POE event handlers via SOAP over HTTP
 		}
 	}
 
-=head1 CHANGES
-
-=head2 1.09
-
-	Yann Kerhervé spotted a bug where having no Content-Type results in a warning -> which dies...
-	This is long overdue - thanks again!
-
-=head2 1.08
-
-	vkroll @ #POE @ MAGNet made some excellent suggestions
-		- print the exact SOAP envelope to stderr if DEBUG == 2
-		- the ability to generate the XML yourself, added the RAWDONE/RAWFAULT events
-	Realized that the examples were using ssl, I did not supply directions so the ssl part was removed
-	Hopefully by the next release or two, full SOAP/1.2 support will be included ( also waiting on SOAP::Lite to get out of beta )
-	The next release will have the option to "attach" to an existing SimpleHTTP session ( so there is 1 less webserver running, yay! )
-
-=head2 1.07
-
-	Made the documentation clearer for ADDRESS, thanks to Kaare Rasmussen!
-
-=head2 1.06
-
-	Rearranged DEBUG printouts
-	Added ability to pass arguments to SimpleHTTP ( mainly for the SSL stuff )
-
-=head2 1.05
-
-	Followed SimpleHTTP's STARTLISTEN, STOPLISTEN, SHUTDOWN GRACEFUL changes
-	Some minor internal tweaks
-	POD tweaks
-
-=head2 1.04
-
-	Big change! The deserializer is now hooked into SOAP::Lite for full SOAP/1.1 interop :)
-	Big change! The output envelope is now hooked into SOAP::Lite instead of SOAP::EnvelopeMaker :)
-	Made debugging more productive by adding service/method/IP to output
-	Got rid of the CHANGES file, it is redundant ;)
-	The headers is now an arrayref of SOAP::Header objects ( if any )
-	Got rid of SOAP::Defs, replaced them with SOAP::Constants ( from SOAP::Lite )
-	Added the MUSTUNDERSTAND parameter to new()
-
-=head2 1.03
-
-	I realized that I didn't like having the SOAP Fault event called "ERROR" and changed it to "FAULT" :)
-	Fixed the Fault Code in the SYNOPSIS from Add:Error to the more SOAPy one
-	Rocco Caputo helped me with some POD errors/typos/stuff
-	Fixed new() to remove options that exist, but is undef -> results in croaking when DEBUG is on
-
-=head2 1.02
-
-	POD Formatting ( I'm still not an expert )
-	I forgot to add the test to the MANIFEST, so the distribution had no tests... *gah*
-
-=head2 1.01
-
-	Took over ownership of this module from Rocco Caputo
-	Broke just about everything :)
-
-=head2 0.03
-
-	Old version from Rocco Caputo
-
 =head1 ABSTRACT
 
 	An easy to use SOAP/1.1 daemon for POE-enabled programs
@@ -1247,7 +1185,7 @@ You can enable debugging mode by doing this:
 
 In the case you want to see the raw xml being received/sent to the client, set DEBUG to 2.
 
-Yes, I broke a lot of things in this release ( 1.01 ), but Rocco agreed that it's best to break things
+Yes, I broke a lot of things in the release ( 1.01 ), but Rocco agreed that it's best to break things
 as early as possible, so that development can move on instead of being stuck on legacy issues.
 
 =head2 Using SSL

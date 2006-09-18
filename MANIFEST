@@ -6,4 +6,6 @@ lib/POE/Component/Server/SOAP/Response.pm
 examples/test-client.perl
 examples/test-server.perl
 META.yml                                 Module meta-data (added by MakeMaker)
-t/1.t
+t/1_load.t
+t/2_pod.t
+Changes
