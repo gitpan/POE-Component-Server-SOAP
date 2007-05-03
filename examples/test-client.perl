@@ -28,8 +28,9 @@ print SOAP::Lite
 	-> proxy('http://localhost:32080/?session=MyServer')
 	-> DUMP(
 		{
-			'Foo'	=>	'Baz',
-			'Hello'	=>	'World!',
+			'Foo'		=>	'Baz',
+			'Hello'		=>	'World!',
+			'Frobnicate'	=>	45,
 		},
 	)-> result
 	;
@@ -38,6 +39,6 @@ print "\n\nNow, let's see some raw XML!\n";
 print Dumper( SOAP::Lite
 	-> uri('http://localhost:32080/')
 	-> proxy('http://localhost:32080/?session=MyServer')
-	-> XMLize()
+	-> Get_XML()
 	-> result
 	);

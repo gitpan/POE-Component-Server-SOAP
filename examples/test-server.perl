@@ -22,7 +22,7 @@ POE::Session->create(
 		Sum_Things => \&do_sum,
 		Dump_Things => \&do_dump,
 		LocalTime => \&do_time,
-		XMLize => \&do_xml,
+		Get_XML => \&do_xml,
 	}
 );
 
@@ -33,7 +33,7 @@ sub setup_service {
 	my $kernel = $_[KERNEL];
 	$kernel->alias_set( 'MyServer' );
 	$kernel->post( 'MySOAP', 'ADDMETHOD', 'MyServer', 'Sum_Things' );
-	$kernel->post( 'MySOAP', 'ADDMETHOD', 'MyServer', 'XMLize' );
+	$kernel->post( 'MySOAP', 'ADDMETHOD', 'MyServer', 'Get_XML' );
 	$kernel->post( 'MySOAP', 'ADDMETHOD', 'MyServer', 'Dump_Things', 'MyServer', 'DUMP' );
 	$kernel->post( 'MySOAP', 'ADDMETHOD', 'MyServer', 'LocalTime', 'TimeServer', 'Time' );
 }

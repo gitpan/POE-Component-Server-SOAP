@@ -8,7 +8,7 @@ use Carp qw(croak);
 
 # Our version stuff
 # $Revision: 1207 $
-our $VERSION = '1.10';
+our $VERSION = '1.11';
 
 # Import the proper POE stuff
 use POE;
@@ -692,7 +692,9 @@ sub TransactionFault {
 	}
 
 	# Setup the response
-	$response->code( $SOAP::Constants::HTTP_ON_FAULT_CODE );
+	if ( ! defined $response->code ) {
+		$response->code( $SOAP::Constants::HTTP_ON_FAULT_CODE );
+	}
 	$response->header( 'Content-Type', 'text/xml' );
 	$response->content( $content );
 
@@ -728,7 +730,9 @@ sub TransactionDone {
 	);
 
 	# Set up the response!
-	$response->code( $SOAP::Constants::HTTP_ON_SUCCESS_CODE );
+	if ( ! defined $response->code ) {
+		$response->code( $SOAP::Constants::HTTP_ON_SUCCESS_CODE );
+	}
 	$response->header( 'Content-Type', 'text/xml' );
 	$response->content( $content );
 
@@ -958,7 +962,7 @@ There are only a few ways to communicate with Server::SOAP.
 	The content in $response->content() will be automatically serialized via SOAP::Lite's SOAP::Serializer
 
 	NOTE: This method automatically sets some parameters:
-		- HTTP Status = 200
+		- HTTP Status = 200 ( if not defined )
 		- HTTP Header value of 'Content-Type' = 'text/xml'
 
 	To get greater throughput and response time, do not post() to the DONE event, call() it!
@@ -996,7 +1000,7 @@ There are only a few ways to communicate with Server::SOAP.
 	Calling this event will generate a SOAP Fault and return it to the client.
 
 	NOTE: This method automatically sets some parameters:
-		- HTTP Status = 500
+		- HTTP Status = 500 ( if not defined )
 		- HTTP Header value of 'Content-Type' = 'text/xml'
 		- HTTP Content = SOAP Envelope of the fault ( overwriting anything that was there )
 
@@ -1236,7 +1240,7 @@ I took over this module from Rocco Caputo. Here is his stuff:
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2006 by Apocalypse
+Copyright 2007 by Apocalypse
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
