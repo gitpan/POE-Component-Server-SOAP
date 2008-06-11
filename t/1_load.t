@@ -1,14 +1,10 @@
-# Before `make install' is performed this script should be runnable with
-# `make test'. After `make install' it should work as `perl 1.t'
+#!/usr/bin/perl
 
-#########################
-
-# change 'tests => 1' to 'tests => last_test_to_print';
+# Import the stuff
+# XXX no idea why this is broken for this particular dist!
+#use Test::UseAllModules;
+#BEGIN { all_uses_ok(); }
 
 use Test::More tests => 2;
-BEGIN {
-	use_ok( 'POE::Component::Server::SOAP::Response' );
-	use_ok( 'POE::Component::Server::SOAP' );
-};
-
-#########################
+use_ok( 'POE::Component::Server::SOAP::Response' );
+use_ok( 'POE::Component::Server::SOAP' );

@@ -1,14 +1,12 @@
 # Declare our package
 package POE::Component::Server::SOAP;
+use strict; use warnings;
 
-# Standard stuff to catch errors
-use strict qw(subs vars refs);				# Make sure we can't mess up
-use warnings FATAL => 'all';				# Enable warnings to catch errors
 use Carp qw(croak);
 
-# Our version stuff
-# $Revision: 1207 $
-our $VERSION = '1.11';
+# Initialize our version $LastChangedRevision: 7 $
+use vars qw( $VERSION );
+$VERSION = '1.12';
 
 # Import the proper POE stuff
 use POE;
@@ -1240,7 +1238,7 @@ I took over this module from Rocco Caputo. Here is his stuff:
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2007 by Apocalypse
+Copyright 2008 by Apocalypse
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

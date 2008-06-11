@@ -8,6 +8,19 @@ WriteMakefile(
 		'POE'					=>	'0.29',
 		'POE::Component::Server::SimpleHTTP'	=>	'1.10',
 		'SOAP::Lite'				=>	'0.55',
+		'Carp'					=>	0,
+
+		# test stuff
+		'Test::More'		=> 0,
+		'Test::Distribution'	=> 0,
+		'Test::Strict'		=> 0,
+		'Test::HasVersion'	=> 0,
+		'Test::CheckManifest'	=> 0,
+		'Test::Kwalitee'	=> 0,
+		'Test::MinimumVersion'	=> 0,
+		'Test::Pod'		=> 0,
+		'Test::Pod::Coverage'	=> 0,
+		'Test::UseAllModules'	=> 0,
 
 	},
 	(	$] >= 5.005 ?		# Add new keywords

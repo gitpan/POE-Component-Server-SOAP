@@ -1,13 +1,10 @@
 # Declare our package
 package POE::Component::Server::SOAP::Response;
+use strict; use warnings;
 
-# Standard stuff to catch errors
-use strict qw(subs vars refs);				# Make sure we can't mess up
-use warnings FATAL => 'all';				# Enable warnings to catch errors
-
-# Our version stuff
-# $Revision: 1109 $
-our $VERSION = '1.02';
+# Initialize our version
+use vars qw( $VERSION );
+$VERSION = (qw$LastChangedRevision: 7 $)[1];
 
 # Set our stuff to SimpleHTTP::Response
 use base qw( POE::Component::Server::SimpleHTTP::Response );
@@ -59,18 +56,6 @@ POE::Component::Server::SOAP::Response - Emulates a SimpleHTTP::Response object,
 
 	print $response->soapmethod;
 
-=head1 CHANGES
-
-=head2 1.02
-
-	Renamed the accessor "soaptypeuri" to "soapuri"
-	Removed the unnecessary "soaptypename" accessor
-	Fixed POD wording due to switch between SOAP::Parser and SOAP::Lite
-
-=head2 1.01
-
-	Initial Revision
-
 =head1 DESCRIPTION
 
 	This module is used as a drop-in replacement, because we need to store some SOAP data for the response.
@@ -107,7 +92,7 @@ Apocalypse E<lt>apocal@cpan.orgE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2007 by Apocalypse
+Copyright 2008 by Apocalypse
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
