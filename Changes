@@ -1,5 +1,13 @@
 Revision history for Perl extension POE::Component::Server::SOAP.
 
+* 1.13
+
+	removed Test::* modules from dependency list - thanks RT #36725
+
+	dos2unix fixes - thanks RT #36704
+
+	added Build.PL
+
 * 1.12
 
 	Kwalitee-related fixes
@@ -18,7 +26,7 @@ Revision history for Perl extension POE::Component::Server::SOAP.
 
 * 1.09
 
-	Yann Kerhervé spotted a bug where having no Content-Type results in a warning -> which dies...
+	Yann Kerhervï¿½ spotted a bug where having no Content-Type results in a warning -> which dies...
 	This is long overdue - thanks again!
 
 * 1.08

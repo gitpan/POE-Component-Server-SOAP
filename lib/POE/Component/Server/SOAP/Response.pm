@@ -1,10 +1,10 @@
-# Declare our package
+# $Id: Response.pm 82 2008-08-08 01:30:59Z larwan $
 package POE::Component::Server::SOAP::Response;
 use strict; use warnings;
 
 # Initialize our version
 use vars qw( $VERSION );
-$VERSION = (qw$LastChangedRevision: 7 $)[1];
+$VERSION = (qw$LastChangedRevision: 82 $)[1];
 
 # Set our stuff to SimpleHTTP::Response
 use base qw( POE::Component::Server::SimpleHTTP::Response );

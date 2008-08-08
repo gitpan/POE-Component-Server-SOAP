@@ -1,12 +1,12 @@
-# Declare our package
+# $Id: SOAP.pm 83 2008-08-08 01:37:07Z larwan $
 package POE::Component::Server::SOAP;
 use strict; use warnings;
 
 use Carp qw(croak);
 
-# Initialize our version $LastChangedRevision: 7 $
+# Initialize our version $LastChangedRevision: 83 $
 use vars qw( $VERSION );
-$VERSION = '1.12';
+$VERSION = '1.13';
 
 # Import the proper POE stuff
 use POE;
@@ -22,7 +22,9 @@ use POE::Component::Server::SOAP::Response;
 BEGIN {
 	# Debug fun!
 	if ( ! defined &DEBUG ) {
+		## no critic
 		eval "sub DEBUG () { 0 }";
+		## use critic
 	}
 }
 
@@ -303,7 +305,7 @@ sub AddMethod {
 		if ( DEBUG ) {
 			warn 'Did not get a Session Alias';
 		}
-		return undef;
+		return;
 	}
 
 	if ( defined $_[ARG1] and length( $_[ARG1] ) ) {
@@ -313,7 +315,7 @@ sub AddMethod {
 		if ( DEBUG ) {
 			warn 'Did not get a Session Event';
 		}
-		return undef;
+		return;
 	}
 
 	# If none, defaults to the Session stuff
@@ -387,21 +389,21 @@ sub DeleteMethod {
 				if ( DEBUG ) {
 					warn 'Tried to delete a nonexistant Method in Service -> ' . $service . ' : ' . $method;
 				}
-				return undef;
+				return;
 			}
 		} else {
 			# Complain!
 			if ( DEBUG ) {
 				warn 'Did not get a method to delete in Service -> ' . $service;
 			}
-			return undef;
+			return;
 		}
 	} else {
 		# No arguments!
 		if ( DEBUG ) {
 			warn 'Received no arguments!';
 		}
-		return undef;
+		return;
 	}
 }
 
@@ -424,14 +426,14 @@ sub DeleteService {
 			if ( DEBUG ) {
 				warn 'Tried to delete a Service that does not exist! -> ' . $service;
 			}
-			return undef;
+			return;
 		}
 	} else {
 		# No arguments!
 		if ( DEBUG ) {
 			warn 'Received no arguments!';
 		}
-		return undef;
+		return;
 	}
 }
 
@@ -654,7 +656,7 @@ sub TransactionFault {
 		if ( DEBUG ) {
 			warn 'Received FAULT event but no arguments!';
 		}
-		return undef;
+		return;
 	}
 
 	# Is this a RAWFAULT event?
