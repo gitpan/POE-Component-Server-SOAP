@@ -2,30 +2,27 @@
 package POE::Component::Server::SOAP;
 use strict; use warnings;
 
-use Carp qw(croak);
-
 # Initialize our version $LastChangedRevision: 83 $
 use vars qw( $VERSION );
-$VERSION = '1.13';
+$VERSION = '1.14';
+
+use Carp qw(croak);
 
 # Import the proper POE stuff
 use POE;
+use POE::Session;
 use POE::Component::Server::SimpleHTTP;
 
 # We need SOAP stuff
 use SOAP::Lite;
+use SOAP::Constants;
 
 # Our own modules
 use POE::Component::Server::SOAP::Response;
 
 # Set some constants
 BEGIN {
-	# Debug fun!
-	if ( ! defined &DEBUG ) {
-		## no critic
-		eval "sub DEBUG () { 0 }";
-		## use critic
-	}
+	if ( ! defined &DEBUG ) { *DEBUG = sub () { 0 } }
 }
 
 # Create a new instance
@@ -237,7 +234,7 @@ sub StartServer {
 	) or die 'Unable to create the HTTP Server';
 
 	# Success!
-	return 1;
+	return;
 }
 
 # Shuts down the server
@@ -252,7 +249,7 @@ sub StopServer {
 	}
 
 	# Success!
-	return 1;
+	return;
 }
 
 # Stops listening for connections
@@ -261,7 +258,7 @@ sub StopListen {
 	$_[KERNEL]->call( $_[HEAP]->{'ALIAS'} . '-BACKEND', 'STOPLISTEN' );
 
 	# Success!
-	return 1;
+	return;
 }
 
 # Starts listening for connections
@@ -270,7 +267,7 @@ sub StartListen {
 	$_[KERNEL]->call( $_[HEAP]->{'ALIAS'} . '-BACKEND', 'STARTLISTEN' );
 
 	# Success!
-	return 1;
+	return;
 }
 
 # Watches for SimpleHTTP shutting down and shuts down ourself
@@ -289,7 +286,7 @@ sub SmartShutdown {
 	}
 
 	# All done!
-	return 1;
+	return;
 }
 
 # Adds a method
@@ -389,22 +386,21 @@ sub DeleteMethod {
 				if ( DEBUG ) {
 					warn 'Tried to delete a nonexistant Method in Service -> ' . $service . ' : ' . $method;
 				}
-				return;
 			}
 		} else {
 			# Complain!
 			if ( DEBUG ) {
 				warn 'Did not get a method to delete in Service -> ' . $service;
 			}
-			return;
 		}
 	} else {
 		# No arguments!
 		if ( DEBUG ) {
 			warn 'Received no arguments!';
 		}
-		return;
 	}
+
+	return;
 }
 
 # Deletes a service
@@ -426,15 +422,15 @@ sub DeleteService {
 			if ( DEBUG ) {
 				warn 'Tried to delete a Service that does not exist! -> ' . $service;
 			}
-			return;
 		}
 	} else {
 		# No arguments!
 		if ( DEBUG ) {
 			warn 'Received no arguments!';
 		}
-		return;
 	}
+
+	return;
 }
 
 # Got a request, handle it!
@@ -537,7 +533,7 @@ sub TransactionStart {
 
 	# Actually parse the SOAP query!
 	my $som_object;
-	eval { $som_object = SOAP::Deserializer->deserialize( $request->content() ) };
+	eval { $som_object = SOAP::Deserializer->deserialize( $request->content() ) };	## no critic ( RequireExplicitInclusion )
 
 	# Check for errors
 	if ( $@ ) {
@@ -568,7 +564,7 @@ sub TransactionStart {
 	my @headers = ();
 	while ( 1 ) {
 		# Get the header
-		my $hdr = $som_object->headerof( SOAP::SOM::header . "/[$head_count]" );
+		my $hdr = $som_object->headerof( SOAP::SOM::header . "/[$head_count]" );	## no critic ( RequireExplicitInclusion )
 
 		# Check if it is defined
 		if ( ! defined $hdr ) {
@@ -642,7 +638,7 @@ sub TransactionStart {
 	}
 
 	# All done!
-	return 1;
+	return;
 }
 
 # Creates the fault and sends it off
@@ -663,6 +659,7 @@ sub TransactionFault {
 	my $content = undef;
 	if ( $_[STATE] eq 'RAWFAULT' ) {
 		# Tell SOAP::Serializer to not serialize it
+		## no critic ( RequireExplicitInclusion )
 		$content = SOAP::Serializer->envelope( 'freeform', SOAP::Data->type( 'xml', $response->content() ) );
 	} else {
 		# Fault Code must be defined
@@ -688,6 +685,7 @@ sub TransactionFault {
 		}
 
 		# Serialize the envelope
+		## no critic ( RequireExplicitInclusion )
 		$content = SOAP::Serializer->envelope( 'fault', $fault_code, $fault_string, $fault_detail, $fault_actor );
 	}
 
@@ -711,7 +709,7 @@ sub TransactionFault {
 	}
 
 	# All done!
-	return 1;
+	return;
 }
 
 # All done with a transaction!
@@ -721,6 +719,7 @@ sub TransactionDone {
 
 	# Make the envelope!
 	# The prefix is to change the darned "c-gensym3" to "s-gensym3" -> means it was server-generated ( whatever SOAP::Lite says... )
+	## no critic ( RequireExplicitInclusion )
 	my $content = SOAP::Serializer->prefix( 's' )->envelope(
 		'response',
 		SOAP::Data->name( $response->soapmethod() . 'Response' )->uri( $response->soapuri() ),
@@ -728,6 +727,7 @@ sub TransactionDone {
 		# Do we need to serialize the content or not?
 		( $_[STATE] eq 'RAWDONE' ? SOAP::Data->type( 'xml', $response->content() ) : $response->content() ),
 	);
+	## use critic
 
 	# Set up the response!
 	if ( ! defined $response->code ) {
@@ -749,7 +749,7 @@ sub TransactionDone {
 	}
 
 	# All done!
-	return 1;
+	return;
 }
 
 # Close the transaction
@@ -766,7 +766,7 @@ sub TransactionClose {
 	}
 
 	# All done!
-	return 1;
+	return;
 }
 
 1;
@@ -1207,23 +1207,57 @@ So you want to use SSL in Server::SOAP? Here's a example on how to do it:
 
 Ah, to use SSL in SOAP::Lite, simply use https://blah.com instead of http://blah.com
 
+=head1 SUPPORT
+
+You can find documentation for this module with the perldoc command.
+
+    perldoc POE::Component::Server::SOAP
+
+=head2 Websites
+
+=over 4
+
+=item * AnnoCPAN: Annotated CPAN documentation
+
+L<http://annocpan.org/dist/POE-Component-Server-SOAP>
+
+=item * CPAN Ratings
+
+L<http://cpanratings.perl.org/d/POE-Component-Server-SOAP>
+
+=item * RT: CPAN's request tracker
+
+L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=POE-Component-Server-SOAP>
+
+=item * Search CPAN
+
+L<http://search.cpan.org/dist/POE-Component-Server-SOAP>
+
+=back
+
+=head2 Bugs
+
+Please report any bugs or feature requests to C<bug-poe-component-server-soap at rt.cpan.org>, or through
+the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=POE-Component-Server-SOAP>.  I will be
+notified, and then you'll automatically be notified of progress on your bug as I make changes.
+
 =head1 SEE ALSO
 
-	The examples directory that came with this component.
+The examples directory that came with this component.
 
-	L<POE>
+L<POE>
 
-	L<HTTP::Response>
+L<HTTP::Response>
 
-	L<HTTP::Request>
+L<HTTP::Request>
 
-	L<POE::Component::Server::SOAP::Response>
+L<POE::Component::Server::SOAP::Response>
 
-	L<POE::Component::Server::SimpleHTTP>
+L<POE::Component::Server::SimpleHTTP>
 
-	L<SOAP::Lite>
+L<SOAP::Lite>
 
-	L<POE::Component::SSLify>
+L<POE::Component::SSLify>
 
 =head1 AUTHOR
 
@@ -1240,7 +1274,7 @@ I took over this module from Rocco Caputo. Here is his stuff:
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2008 by Apocalypse
+Copyright 2009 by Apocalypse
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

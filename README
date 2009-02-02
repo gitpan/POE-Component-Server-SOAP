@@ -422,22 +422,52 @@ DESCRIPTION
     Ah, to use SSL in SOAP::Lite, simply use https://blah.com instead of
     http://blah.com
 
+SUPPORT
+    You can find documentation for this module with the perldoc command.
+
+        perldoc POE::Component::Server::SOAP
+
+  Websites
+    *   AnnoCPAN: Annotated CPAN documentation
+
+        <http://annocpan.org/dist/POE-Component-Server-SOAP>
+
+    *   CPAN Ratings
+
+        <http://cpanratings.perl.org/d/POE-Component-Server-SOAP>
+
+    *   RT: CPAN's request tracker
+
+        <http://rt.cpan.org/NoAuth/Bugs.html?Dist=POE-Component-Server-SOAP>
+
+    *   Search CPAN
+
+        <http://search.cpan.org/dist/POE-Component-Server-SOAP>
+
+  Bugs
+    Please report any bugs or feature requests to
+    "bug-poe-component-server-soap at rt.cpan.org", or through the web
+    interface at
+    <http://rt.cpan.org/NoAuth/ReportBug.html?Queue=POE-Component-Server-SOA
+    P>. I will be notified, and then you'll automatically be notified of
+    progress on your bug as I make changes.
+
 SEE ALSO
-            The examples directory that came with this component.
+    The examples directory that came with this component.
 
-            L<POE>
+    POE
 
-            L<HTTP::Response>
+    HTTP::Response
 
-            L<HTTP::Request>
+    HTTP::Request
 
-            L<POE::Component::Server::SOAP::Response>
+    POE::Component::Server::SOAP::Response
 
-            L<POE::Component::Server::SimpleHTTP>
+    POE::Component::Server::SimpleHTTP
 
-            L<SOAP::Lite>
+    SOAP::Lite
 
-            L<POE::Component::SSLify>
+    POE::Component::SSLify
 
 AUTHOR
     Apocalypse <apocal@cpan.org>
@@ -452,7 +482,7 @@ AUTHOR
             Rocco may be contacted by e-mail via rcaputo@cpan.org.
 
 COPYRIGHT AND LICENSE
-    Copyright 2008 by Apocalypse
+    Copyright 2009 by Apocalypse
 
     This library is free software; you can redistribute it and/or modify it
     under the same terms as Perl itself.
